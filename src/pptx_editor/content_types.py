@@ -1,3 +1,5 @@
+from zipfile import ZipFile
+
 from lxml.etree import _Element
 from lxml import etree
 
@@ -54,3 +56,7 @@ class ContentTypes():
         part = part_cls(content_type.get('PartName'))
 
         return part
+
+    def _parse_content_data(self, zip_file: ZipFile):
+        for part in self.parts:
+            part._parse_data(zip_file)

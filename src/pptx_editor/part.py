@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+from zipfile import ZipFile
+
+from lxml import etree
 
 from pptx_editor.singleton import SingletonMeta
 
@@ -18,8 +21,18 @@ class Part(ABC):
     def __init__(self, file_path: str):
         self.file_path = file_path
 
-    def _parse_data(self):
+    def _parse_data(self, zip_file: ZipFile):
+        file_xml = self._get_file_xml(zip_file)
+        self._parse_xml(file_xml)
+
+    @abstractmethod
+    def _parse_xml(self, file_xml: etree._Element):
         pass
+
+    def _get_file_xml(self, zip_file: ZipFile):
+        file_data_string = zip_file.read(self.file_path.lstrip('/'))
+        file_xml = etree.fromstring(file_data_string)
+        return file_xml
 
     @classmethod
     def _register(cls):
