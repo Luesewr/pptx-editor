@@ -19,12 +19,12 @@ class ContentTypes():
 
         for child in tree:
             part = self.parse_content_type(child)
-            
+
             if not part:
                 continue
 
             parts.append(part)
-        
+
         return parts
 
     def parse_content_type(self, content_type: _Element) -> Part | None:
@@ -42,18 +42,15 @@ class ContentTypes():
 
     def parse_override_content_type(self, content_type: _Element) -> Part | None:
         content_type_value = content_type.get('ContentType')
-        
+        content_part_name = content_type.get('PartName')
+
         if content_type_value is None:
             print("Integrity warning: Override element missing ContentType attribute")
             return None
 
         part_cls = PartRegistry().get_part_cls(content_type_value)
 
-        if not part_cls:
-            print(f"Warning: No registered part class for content type: {content_type_value}")
-            return None
-
-        part = part_cls(content_type.get('PartName'))
+        part = part_cls(content_part_name, content_type_value)
 
         return part
 
