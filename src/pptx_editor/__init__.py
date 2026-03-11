@@ -7,6 +7,8 @@ import importlib
 
 import pptx_editor.parts
 
+from pptx_editor.parts.presentation import Presentation
+
 
 def import_submodules(package):
     for _, module_name, _ in pkgutil.iter_modules(package.__path__):
