@@ -18,7 +18,7 @@ class Attribute:
         self.name = q.localname
         self.namespace = sys.intern(q.namespace) if q.namespace else None
         self.values = [AttributeValue(str(key), str(value)) for key, value in xml.attrib.items()]
-        self.children = [Attribute(child) for child in xml]
+        self.attributes = [Attribute(child) for child in xml]
 
     def get_values(self, name: str, namespace: str | None = None) -> list[AttributeValue]:
         return [value for value in self.values if value.name == name and value.namespace == namespace]
@@ -26,7 +26,7 @@ class Attribute:
     def pretty_print(self, indent=0):
         indent_str = ' ' * indent
         print(f"{indent_str}{self}")
-        for child in self.children:
+        for child in self.attributes:
             child.pretty_print(indent + 2)
 
     def __str__(self):

@@ -1,24 +1,30 @@
-from zipfile import ZipFile
-
 from lxml.etree import _Element
 from lxml import etree
 
+from pptx_editor.parser import Parser
 from pptx_editor.part import PartRegistry, Part
 
 class ContentTypes():
-    def __init__(self, content_types: bytes):
-        self.parts = self.parse_content_types(content_types)
+    def __init__(self):
+        self.parts = []
 
-    def parse_content_types(self, content_types_bytes: bytes) -> list[Part]:
-        content_types = content_types_bytes
+    @staticmethod
+    def from_file(parser: Parser):
+        content_types = ContentTypes()
+        content_types._parse_content_types(parser)
+        return content_types
+
+    def _parse_content_types(self, parser: Parser):
+        content_types = parser.read_file('[Content_Types].xml')
         root_element = etree.fromstring(content_types)
-        return self.parse_content_types_tree(root_element)
+        self.parts = self._parse_content_types_tree(parser, root_element)
+        self._parse_content_data(parser)
 
-    def parse_content_types_tree(self, tree: _Element) -> list[Part]:
+    def _parse_content_types_tree(self, parser: Parser, tree: _Element) -> list[Part]:
         parts = []
 
         for child in tree:
-            part = self.parse_content_type(child)
+            part = self._parse_content_type(parser, child)
 
             if not part:
                 continue
@@ -27,20 +33,22 @@ class ContentTypes():
 
         return parts
 
-    def parse_content_type(self, content_type: _Element) -> Part | None:
+    def _parse_content_type(self, parser: Parser, content_type: _Element) -> Part | None:
         q = etree.QName(content_type)
 
+        part = None
+
         if q.localname == 'Default':
-            part = self.parse_default_content_type(content_type)
+            part = self._parse_default_content_type(parser, content_type)
         elif q.localname == 'Override':
-            part = self.parse_override_content_type(content_type)
+            part = self._parse_override_content_type(parser, content_type)
 
         return part
 
-    def parse_default_content_type(self, content_type: _Element):
+    def _parse_default_content_type(self, parser: Parser, content_type: _Element):
         pass
 
-    def parse_override_content_type(self, content_type: _Element) -> Part | None:
+    def _parse_override_content_type(self, parser: Parser, content_type: _Element) -> Part | None:
         content_type_value = content_type.get('ContentType')
         content_part_name = content_type.get('PartName')
 
@@ -50,10 +58,10 @@ class ContentTypes():
 
         part_cls = PartRegistry().get_part_cls(content_type_value)
 
-        part = part_cls(content_part_name, content_type_value)
+        part = part_cls.from_file(parser, content_part_name, content_type_value)
 
         return part
 
-    def _parse_content_data(self, zip_file: ZipFile):
+    def _parse_content_data(self, parser: Parser):
         for part in self.parts:
-            part._parse_data(zip_file)
+            part._parse_data(parser)
