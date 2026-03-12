@@ -10,7 +10,7 @@ class Presentation(Part):
     content_type = PresentationML.PRESENTATION
 
     @staticmethod
-    def from_file(file: IO):
+    def from_zip_file(file: IO):
         parser = Parser(file)
         content_types = ContentTypes.from_file(parser)
 
