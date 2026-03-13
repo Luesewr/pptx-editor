@@ -9,13 +9,13 @@ class ContentTypes():
         self.parts = []
 
     @staticmethod
-    def from_file(parser: Parser):
+    def from_file(parser: Parser, file_path: str = '[Content_Types].xml'):
         content_types = ContentTypes()
-        content_types._parse_content_types(parser)
+        content_types._parse_content_types(parser, file_path)
         return content_types
 
-    def _parse_content_types(self, parser: Parser):
-        content_types = parser.read_file('[Content_Types].xml')
+    def _parse_content_types(self, parser: Parser, file_path: str):
+        content_types = parser.read_file(file_path)
         root_element = etree.fromstring(content_types)
         self.parts = self._parse_content_types_tree(parser, root_element)
         self._parse_content_data(parser)
