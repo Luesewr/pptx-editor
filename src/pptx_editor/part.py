@@ -2,8 +2,8 @@ import sys
 
 from lxml import etree
 
+import pptx_editor.parser
 from pptx_editor.attribute import Attribute, AttributeValue
-from pptx_editor.parser import Parser
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
@@ -14,7 +14,7 @@ class PartRegistry(metaclass=SingletonMeta):
     def register(self, content_type: str, part_cls):
         self._registry[content_type] = part_cls
 
-    def get_part_cls(self, content_type: str) -> type[Part]:
+    def get_part_cls(self, content_type: str) -> type['Part']:
         return self._registry.get(content_type, Part)
 
 class Part():
@@ -28,7 +28,7 @@ class Part():
         self.attributes: list[Attribute] | None = None
 
     @classmethod
-    def from_file(cls, parser: Parser, file_path: str, content_type: str):
+    def from_file(cls, parser: 'pptx_editor.parser.Parser', file_path: str, content_type: str):
         if parser.has_part(file_path):
             return parser.parts[file_path]
 
@@ -37,32 +37,25 @@ class Part():
         part._parse_data(parser)
         return part
 
-    def _parse_data(self, parser: Parser):
+    def _parse_data(self, parser: 'pptx_editor.parser.Parser'):
+        if self._has_relationship_file(parser):
+            self._parse_relationships(parser)
+
         file_xml = self._get_file_xml(parser)
         self._parse_xml(file_xml)
 
-        if self._has_relationship_file(parser):
-            relationship_file_xml = self._get_relationship_file_xml(parser)
-            self._parse_relationship_xml(relationship_file_xml)
 
     def _parse_xml(self, xml: etree._Element):
         self.values = [AttributeValue(str(key), str(value)) for key, value in xml.attrib.items()]
         self.attributes = [Attribute(child) for child in xml]
 
-    def _parse_relationship_xml(self, xml: etree._Element):
-        relationships = []
-
-        for relationship_xml in xml:
-            relationship = Relationship.from_xml(relationship_xml)
-
-            if relationship is None:
-                continue
-
-            relationships.append(relationship)
-
+    def _parse_relationships(self, parser: 'pptx_editor.parser.Parser'):
+        relationship_file_path = self._get_relationship_file_path()
+        relationships = Relationship.from_file(parser, relationship_file_path)
         self.relationships = relationships
+        parser.parse_relationship_targets(relationships)
 
-    def _get_file_xml(self, parser: Parser):
+    def _get_file_xml(self, parser: 'pptx_editor.parser.Parser'):
         file_data_string = parser.read_file(self._get_file_path())
         file_xml = etree.fromstring(file_data_string)
         return file_xml
@@ -70,16 +63,11 @@ class Part():
     def _get_file_path(self):
         return self.file_path.lstrip('/')
 
-    def _get_relationship_file_xml(self, parser: Parser):
-        relationship_file_data_string = parser.read_file(self._get_relationship_file_path())
-        relationship_file_xml = etree.fromstring(relationship_file_data_string)
-        return relationship_file_xml
-
     def _get_relationship_file_path(self) -> str:
         path_elements = self._get_file_path().split('/')
         return '/'.join(path_elements[:-1]) + '/_rels/' + path_elements[-1] + '.rels'
 
-    def _has_relationship_file(self, parser: Parser) -> bool:
+    def _has_relationship_file(self, parser: 'pptx_editor.parser.Parser') -> bool:
         relationship_file_path = self._get_relationship_file_path()
         return relationship_file_path in parser.zip_file.namelist()
 
