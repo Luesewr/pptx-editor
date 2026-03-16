@@ -1,14 +1,10 @@
 from zipfile import ZipFile
-from typing import IO, TYPE_CHECKING
+from typing import IO
 
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.part import Part, PartRegistry
+from pptx_editor.part import ReturnPart, Part, PartRegistry
 from pptx_editor.relationship import Relationship
-from pptx_editor.content_type.presentationml import PresentationML
-
-if TYPE_CHECKING:
-    from pptx_editor.parts.presentation import Presentation
 
 class Parser:
     def __init__(self, file: IO):
@@ -16,7 +12,14 @@ class Parser:
         self.parts: dict[str, 'Part'] = {}
         self.content_types: ContentTypes | None = None
 
-    def parse_zip_file(self):
+    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type[ReturnPart] | None = None) -> Part:
+        if return_location.lstrip('/') not in self.zip_file.namelist():
+            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_location} not found in zip file")
+
+        if return_type is None:
+            from pptx_editor.parts.presentation import Presentation
+            return_type = Presentation
+
         self.content_types = ContentTypes.from_file(self)
 
         main_relations_path = '_rels/.rels'
@@ -28,11 +31,9 @@ class Parser:
         if not self.has_part(powerpoint_part_path):
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
 
-        powerpoint_part: 'Part | None' = self.get_part(powerpoint_part_path)
+        powerpoint_part: Part | None = self.get_part(powerpoint_part_path)
 
-        from pptx_editor.parts.presentation import Presentation
-
-        if powerpoint_part is None or not isinstance(powerpoint_part, Presentation):
+        if powerpoint_part is None or not isinstance(powerpoint_part, return_type):
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} has incorrect content type")
 
         powerpoint_part.main_relationships = main_relationships
@@ -59,12 +60,12 @@ class Parser:
 
     def get_content_type(self, file_path: str) -> str:
         if self.content_types is None:
-            raise Exception("Content types not loaded")
+            raise PowerpointIntegrityError("Content types not loaded")
 
         content_type = self.content_types.get_content_type(file_path)
+
         if content_type is None:
-            print(f"Integrity warning: No content type found for file {file_path}")
-            return ""
+            raise PowerpointIntegrityError(f"Integrity warning: No content type found for file {file_path}")
 
         return content_type
 

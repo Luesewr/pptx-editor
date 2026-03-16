@@ -84,13 +84,21 @@ class Part():
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
-        if cls.content_type is None:
+        class_exceptions = ['ReturnPart']
+
+        if cls.__name__ not in class_exceptions and cls.content_type is None:
             raise ValueError(f"Part subclass {cls.__name__} must define a content_type class attribute")
 
-        cls._register()
+        if cls.__name__ not in class_exceptions:
+            cls._register()
 
     def __str__(self) -> str:
         return f"{self.content_type.split('.')[-1].removesuffix('+xml')}(file_path={self.file_path})"
 
     def __repr__(self) -> str:
         return self.__str__()
+
+class ReturnPart(Part):
+    def __init__(self, file_path: str, content_type: str):
+        super().__init__(file_path, content_type)
+        self.main_relationships: list['Relationship'] | None = None
