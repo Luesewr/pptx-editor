@@ -1,7 +1,10 @@
+from typing import TYPE_CHECKING
+
 from lxml.etree import _Element
 from lxml import etree
 
-import pptx_editor.parser
+if TYPE_CHECKING:
+    from pptx_editor.parser import Parser
 
 class ContentTypes():
     def __init__(self):
@@ -9,7 +12,7 @@ class ContentTypes():
         self.overrides = {}
 
     @staticmethod
-    def from_file(parser: 'pptx_editor.parser.Parser', file_path: str = '[Content_Types].xml'):
+    def from_file(parser: 'Parser', file_path: str = '[Content_Types].xml'):
         content_types = ContentTypes()
         content_types._parse_content_types(parser, file_path)
         return content_types
@@ -25,7 +28,7 @@ class ContentTypes():
         print(f"Integrity warning: No content type found for {file_path}")
         return None
 
-    def _parse_content_types(self, parser: 'pptx_editor.parser.Parser', file_path: str):
+    def _parse_content_types(self, parser: 'Parser', file_path: str):
         content_types = parser.read_file(file_path)
         root_element = etree.fromstring(content_types)
         self._parse_content_types_tree(root_element)

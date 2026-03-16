@@ -1,14 +1,18 @@
 from zipfile import ZipFile
-from typing import IO
+from typing import IO, TYPE_CHECKING
 
 from pptx_editor.content_types import ContentTypes
-from pptx_editor.part import PartRegistry
+from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
+from pptx_editor.content_type.presentationml import PresentationML
+
+if TYPE_CHECKING:
+    from pptx_editor.parts.presentation import Presentation
 
 class Parser:
     def __init__(self, file: IO):
         self.zip_file = ZipFile(file)
-        self.parts = {}
+        self.parts: dict[str, 'Part'] = {}
         self.content_types: ContentTypes | None = None
 
     def parse_zip_file(self):
@@ -17,6 +21,20 @@ class Parser:
         main_relations_path = '_rels/.rels'
         main_relationships = Relationship.from_file(self, main_relations_path)
         self.parse_relationship_targets(main_relationships)
+
+        powerpoint_part_path = 'ppt/presentation.xml'
+
+        if not self.has_part(powerpoint_part_path):
+            print(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
+            return self.parts
+
+        powerpoint_part: 'Part | None' = self.parse_part(powerpoint_part_path)
+
+        from pptx_editor.parts.presentation import Presentation
+
+        if powerpoint_part is not None and isinstance(powerpoint_part, Presentation):
+            powerpoint_part.main_relationships = main_relationships
+
         return self.parts
 
     def parse_relationship_targets(self, relationships: list[Relationship]):
@@ -30,7 +48,7 @@ class Parser:
 
         if not content_type.endswith('xml'):
             print(f"Skipping non-XML part {file_path} with content type {content_type}")
-            return
+            return None
 
         part_cls = PartRegistry().get_part_cls(content_type)
         part = part_cls.from_file(self, file_path, content_type)
@@ -56,3 +74,6 @@ class Parser:
 
     def has_part(self, file_path: str) -> bool:
         return file_path in self.parts
+
+    def get_part(self, file_path: str):
+        return self.parts.get(file_path)

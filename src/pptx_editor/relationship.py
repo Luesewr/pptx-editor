@@ -1,8 +1,11 @@
 import sys
 
+from typing import TYPE_CHECKING
+
 from lxml import etree
 
-import pptx_editor.parser
+if TYPE_CHECKING:
+    from pptx_editor.parser import Parser
 
 class Relationship:
     def __init__(self, relationship_id: str, target_type: str, target: str, location: str):
@@ -12,7 +15,7 @@ class Relationship:
         self.location = location
 
     @classmethod
-    def from_file(cls, parser: 'pptx_editor.parser.Parser', file_path: str):
+    def from_file(cls, parser: 'Parser', file_path: str):
         relationship_xml = parser.read_file(file_path)
         relationship_tree = etree.fromstring(relationship_xml)
 
