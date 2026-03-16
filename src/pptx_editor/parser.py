@@ -2,6 +2,7 @@ from zipfile import ZipFile
 from typing import IO, TYPE_CHECKING
 
 from pptx_editor.content_types import ContentTypes
+from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
 from pptx_editor.content_type.presentationml import PresentationML
@@ -22,20 +23,21 @@ class Parser:
         main_relationships = Relationship.from_file(self, main_relations_path)
         self.parse_relationship_targets(main_relationships)
 
-        powerpoint_part_path = 'ppt/presentation.xml'
+        powerpoint_part_path = '/ppt/presentation.xml'
 
         if not self.has_part(powerpoint_part_path):
-            print(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
-            return self.parts
+            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
 
-        powerpoint_part: 'Part | None' = self.parse_part(powerpoint_part_path)
+        powerpoint_part: 'Part | None' = self.get_part(powerpoint_part_path)
 
         from pptx_editor.parts.presentation import Presentation
 
-        if powerpoint_part is not None and isinstance(powerpoint_part, Presentation):
-            powerpoint_part.main_relationships = main_relationships
+        if powerpoint_part is None or not isinstance(powerpoint_part, Presentation):
+            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} has incorrect content type")
 
-        return self.parts
+        powerpoint_part.main_relationships = main_relationships
+
+        return powerpoint_part
 
     def parse_relationship_targets(self, relationships: list[Relationship]):
         for relationship in relationships:
