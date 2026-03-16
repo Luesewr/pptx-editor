@@ -6,6 +6,8 @@ from pptx_editor.attribute import Attribute
 
 class Presentation(ReturnPart):
     content_type = PresentationML.PRESENTATION
+    default_base_path = '/ppt'
+    default_part_name = 'presentation.xml'
 
     @staticmethod
     def from_zip_file(file: IO):

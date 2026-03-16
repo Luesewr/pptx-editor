@@ -3,3 +3,5 @@ from pptx_editor.part import Part
 
 class SlideLayout(Part):
     content_type = PresentationML.SLIDE_LAYOUT
+    default_base_path = '/ppt/slideLayouts'
+    default_part_name = 'slideLayout{i}.xml'

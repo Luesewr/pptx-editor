@@ -31,3 +31,6 @@ class Attribute:
 
     def __str__(self):
         return f"Attribute(name={self.name}, namespace={self.namespace}, values={[str(value) for value in self.values]})"
+
+    def __repr__(self):
+        return self.__str__()

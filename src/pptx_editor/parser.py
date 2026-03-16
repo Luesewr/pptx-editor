@@ -72,8 +72,8 @@ class Parser:
     def read_file(self, file_path: str) -> bytes:
         return self.zip_file.read(file_path)
 
-    def add_part(self, part):
-        self.parts[part.file_path] = part
+    def add_part(self, part: 'Part'):
+        self.parts[part._get_file_path(original=True)] = part
 
     def has_part(self, file_path: str) -> bool:
         return file_path in self.parts
