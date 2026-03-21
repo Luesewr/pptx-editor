@@ -1,24 +1,38 @@
 import sys
 
 from lxml import etree
+from typing import TYPE_CHECKING, Iterable
 
-class AttributeValue:
-    def __init__(self, name: str, value: str):
-        q = etree.QName(name)
-        self.namespace = sys.intern(q.namespace) if q.namespace else None
-        self.name = q.localname
-        self.value = value
+from pptx_editor.attribute_value import AttributeValue, AttributeValueRegistry
 
-    def __str__(self):
-        return f"{self.namespace}:{self.name}={self.value}" if self.namespace else f"{self.name}={self.value}"
+if TYPE_CHECKING:
+    from pptx_editor.parser import Parser
 
 class Attribute:
-    def __init__(self, xml: etree._Element):
+    __slots__ = ['name', 'namespace', 'values', 'attributes']
+
+    def __init__(self, name: str, namespace: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute']):
+        self.name = sys.intern(name)
+        self.namespace = sys.intern(namespace) if namespace else None
+        self.values = values
+        self.attributes = attributes
+
+    @classmethod
+    def from_xml(cls, parser: 'Parser', file_path: str | None, xml: etree._Element) -> 'Attribute':
         q = etree.QName(xml)
-        self.name = q.localname
-        self.namespace = sys.intern(q.namespace) if q.namespace else None
-        self.values = [AttributeValue(str(key), str(value)) for key, value in xml.attrib.items()]
-        self.attributes = [Attribute(child) for child in xml]
+        name = sys.intern(q.localname)
+        namespace = sys.intern(q.namespace) if q.namespace else None
+        values = tuple(cls.from_item(parser, file_path, str(key), str(value)) for key, value in xml.attrib.items())
+        attributes = tuple(Attribute.from_xml(parser, file_path, child) for child in xml)
+        return cls(name, namespace, values, attributes)
+
+    @classmethod
+    def from_item(cls, parser: 'Parser', file_path: str | None, name: str, value: str) -> 'AttributeValue':
+        registry = AttributeValueRegistry()
+        q = etree.QName(name)
+        namespace = sys.intern(q.namespace) if q.namespace else None
+        attribute_value_cls = registry.get_attribute_value_cls(namespace)
+        return attribute_value_cls.from_item(parser, file_path, name, value)
 
     def get_values(self, name: str, namespace: str | None = None) -> list[AttributeValue]:
         return [value for value in self.values if value.name == name and value.namespace == namespace]
