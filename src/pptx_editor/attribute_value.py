@@ -7,6 +7,7 @@ from pptx_editor.singleton import SingletonMeta
 
 if TYPE_CHECKING:
     from pptx_editor.parser import Parser
+    from pptx_editor.writer import Writer
 
 class AttributeValueRegistry(metaclass=SingletonMeta):
     def __init__(self):
@@ -34,6 +35,10 @@ class AttributeValue:
         attribute_value = cls(name, value)
 
         return attribute_value
+
+    def to_xml(self, element: etree._Element, writer: 'Writer'):
+        qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
+        element.set(qname, self.value)
 
     @classmethod
     def _register(cls):

@@ -4,18 +4,22 @@ from lxml import etree
 from typing import TYPE_CHECKING, Iterable
 
 from pptx_editor.attribute_value import AttributeValue, AttributeValueRegistry
+from pptx_editor.attribute_values.relation_value import RelationshipValue
+from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
     from pptx_editor.parser import Parser
+    from pptx_editor.writer import Writer
 
 class Attribute:
-    __slots__ = ['name', 'namespace', 'values', 'attributes']
+    __slots__ = ['name', 'namespace', 'values', 'attributes', 'defined_namespace']
 
-    def __init__(self, name: str, namespace: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute']):
+    def __init__(self, name: str, namespace: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute'], defined_namespace: dict[str | None, str] | None = None):
         self.name = sys.intern(name)
         self.namespace = sys.intern(namespace) if namespace else None
         self.values = values
         self.attributes = attributes
+        self.defined_namespace = defined_namespace
 
     @classmethod
     def from_xml(cls, parser: 'Parser', file_path: str | None, xml: etree._Element) -> 'Attribute':
@@ -24,7 +28,14 @@ class Attribute:
         namespace = sys.intern(q.namespace) if q.namespace else None
         values = tuple(cls.from_item(parser, file_path, str(key), str(value)) for key, value in xml.attrib.items())
         attributes = tuple(Attribute.from_xml(parser, file_path, child) for child in xml)
-        return cls(name, namespace, values, attributes)
+
+        defined_namespace = None
+        parent_node = xml.getparent()
+
+        if parent_node is None or parent_node.nsmap != xml.nsmap:
+            defined_namespace = {prefix: sys.intern(uri) for prefix, uri in xml.nsmap.items() if parent_node is None or prefix not in parent_node.nsmap}
+
+        return cls(name, namespace, values, attributes, defined_namespace=defined_namespace)
 
     @classmethod
     def from_item(cls, parser: 'Parser', file_path: str | None, name: str, value: str) -> 'AttributeValue':
@@ -34,8 +45,36 @@ class Attribute:
         attribute_value_cls = registry.get_attribute_value_cls(namespace)
         return attribute_value_cls.from_item(parser, file_path, name, value)
 
+    def get_relationships(self) -> list['Relationship']:
+        relationships = []
+        for value in self.values:
+            if isinstance(value, RelationshipValue) and hasattr(value, 'value') and isinstance(value.value, Relationship):
+                relationships.append(value.value)
+
+        for attribute in self.attributes:
+            relationships.extend(attribute.get_relationships())
+
+        return relationships
+
     def get_values(self, name: str, namespace: str | None = None) -> list[AttributeValue]:
         return [value for value in self.values if value.name == name and value.namespace == namespace]
+
+    def to_xml(self, writer: 'Writer', namespaces: dict) -> etree._Element:
+        if self.defined_namespace:
+            namespaces.update(self.defined_namespace)
+
+        qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
+        element = etree.Element(qname, nsmap=namespaces)
+
+        for value in self.values:
+            value.to_xml(element, writer)
+
+
+        for attribute in self.attributes:
+            child_element = attribute.to_xml(writer, namespaces)
+            element.append(child_element)
+
+        return element
 
     def pretty_print(self, indent=0):
         indent_str = ' ' * indent

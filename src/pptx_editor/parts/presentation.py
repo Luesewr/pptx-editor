@@ -1,4 +1,6 @@
+from io import BytesIO
 from typing import IO
+from zipfile import ZipFile
 
 from pptx_editor.content_type.presentationml import PresentationML
 from pptx_editor.part import Part
@@ -19,8 +21,14 @@ class Presentation(Part):
     def save_to_buffer(self) -> IO:
         from pptx_editor.writer import Writer
 
-        writer = Writer()
-        return writer.write_to_buffer(self)
+        buffer = BytesIO()
+
+        with ZipFile(buffer, 'w') as zip_file:
+            writer = Writer(zip_file)
+            writer.write_to_buffer(self)
+
+        buffer.seek(0)
+        return buffer
 
 class SlideSize(Attribute):
     pass

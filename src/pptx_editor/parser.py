@@ -1,11 +1,14 @@
 from collections import defaultdict
 from zipfile import ZipFile
-from typing import IO
+from typing import IO, TYPE_CHECKING
 
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
+
+if TYPE_CHECKING:
+    from pptx_editor.parts.presentation import Presentation
 
 class Parser:
     def __init__(self, file: IO):
@@ -15,12 +18,13 @@ class Parser:
         self.content_types: ContentTypes | None = None
         self.base: Part | None = None
 
-    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type[Part] | None = None) -> Part:
+    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type[Presentation] | None = None) -> 'Presentation':
         if return_location.lstrip('/') not in self.zip_file.namelist():
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_location} not found in zip file")
 
+        from pptx_editor.parts.presentation import Presentation
+
         if return_type is None:
-            from pptx_editor.parts.presentation import Presentation
             return_type = Presentation
 
         self.content_types = ContentTypes.from_file(self)
@@ -34,7 +38,7 @@ class Parser:
         if not self.has_part(powerpoint_part_path):
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
 
-        powerpoint_part: Part | None = self.get_part(powerpoint_part_path)
+        powerpoint_part = self.get_part(powerpoint_part_path)
 
         if powerpoint_part is None or not isinstance(powerpoint_part, return_type):
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} has incorrect content type")

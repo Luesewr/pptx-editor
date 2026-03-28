@@ -13,6 +13,7 @@ from pptx_editor.singleton import SingletonMeta
 if TYPE_CHECKING:
     from pptx_editor.parser import Parser
     from pptx_editor.parts.base import Base
+    from pptx_editor.writer import Writer
 
 class PartRegistry(metaclass=SingletonMeta):
     def __init__(self):
@@ -76,6 +77,40 @@ class Part():
         parser.add_part(file_path, part)
         part._parse_data(parser, file_path)
         return part
+
+    def to_file(self, writer: 'Writer'):
+        if writer.is_part_written(self):
+            return
+
+        body_relationships = self.attribute.get_relationships() if self.attribute else []
+        relationships = list(dict.fromkeys(body_relationships + self.relationships))
+
+        writer.assign_relationship_ids(self, relationships)
+        writer.assign_part_indexes(relationships)
+
+        if writer.has_part_index(self.part_name, self):
+            file_name = writer.get_part_index(self.part_name, self)
+        else:
+            file_name = self.part_name
+            # if file_name is None:
+            #     raise PowerpointIntegrityError("Integrity warning: Part has no file path and cannot be written to file")
+
+        file_path = f"{self.base_path}/{file_name}" if self.base_path else file_name
+
+        if file_path and not file_path.startswith('/'):
+            file_path = '/' + file_path
+
+        # Write the part's XML content to the zip file
+        if file_path is not None and self.attribute is not None:
+            part_xml = self.attribute.to_xml(writer, {})
+            part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True)
+            writer.write_file(file_path, part_xml_string)
+
+        writer.add_written_part(self)
+
+        for relationship in relationships:
+            relationship.target.to_file(writer)
+
 
     def _parse_data(self, parser: 'Parser', file_path: str | None = None):
         if self._has_relationship_file(parser, file_path):
