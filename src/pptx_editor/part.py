@@ -109,15 +109,15 @@ class Part():
         file_data = parser.read_file(file_path.lstrip('/'))
         self.data = file_data
 
-    def _get_file_path(self) -> str | None:
-        file_path = None
+    def _get_file_path(self) -> str:
+        file_path = ''
 
         if self.base_path and self.part_name is not None:
             file_path = f"{self.base_path}/{self.part_name}"
         elif self.part_name is not None:
             file_path = f"{self.part_name}"
 
-        if file_path is not None and not file_path.startswith('/'):
+        if not file_path.startswith('/'):
             file_path = '/' + file_path
 
         return file_path

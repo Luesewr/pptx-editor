@@ -4,20 +4,23 @@ from typing import TYPE_CHECKING
 
 from lxml import etree
 
+
 if TYPE_CHECKING:
     from pptx_editor.parser import Parser
     from pptx_editor.part import Part
+    from pptx_editor.writer import Writer
+    from pptx_editor.parts.xml_part import XmlPart
 
 class Relationship:
     __slots__ = ['target_type', 'target', 'origin']
 
-    def __init__(self, target_type: str, target: 'Part', origin: 'Part'):
+    def __init__(self, target_type: str, target: 'Part', origin: 'XmlPart'):
         self.target_type = sys.intern(target_type)
         self.target = target
         self.origin = origin
 
     @classmethod
-    def from_file(cls, parser: 'Parser', file_path: str, origin: 'Part'):
+    def from_file(cls, parser: 'Parser', file_path: str, origin: 'XmlPart'):
         relationship_xml = parser.read_file(file_path.lstrip('/'))
         relationship_tree = etree.fromstring(relationship_xml)
         part_file_path = cls._get_original_file_path(file_path)
@@ -42,7 +45,7 @@ class Relationship:
         return relationships
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: str, origin: 'Part'):
+    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: str, origin: 'XmlPart'):
         relationship_id = relationship_xml.get('Id')
         target_type = relationship_xml.get('Type')
         raw_target_path = relationship_xml.get('Target')
@@ -60,6 +63,13 @@ class Relationship:
             return None
 
         return cls(target_type, target, origin)
+
+    def _to_xml(self, writer: 'Writer') -> etree._Element:
+        relationship_element = etree.Element('Relationship')
+        relationship_element.set('Id', writer.assign_relationship_id(self.origin, self))
+        relationship_element.set('Type', self.target_type)
+        relationship_element.set('Target', writer.assign_part_index(self.target.part_name, self.target))
+        return relationship_element
 
     @staticmethod
     def _get_target_file_path(location: str, target: str):

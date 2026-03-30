@@ -33,12 +33,7 @@ class XmlPart(Part):
         writer.assign_relationship_ids(self, relationships)
         writer.assign_part_indexes(relationships)
 
-        if writer.has_part_index(self.part_name, self):
-            file_name = writer.get_part_index(self.part_name, self)
-        else:
-            file_name = self.part_name
-            # if file_name is None:
-            #     raise PowerpointIntegrityError("Integrity warning: Part has no file path and cannot be written to file")
+        file_name = writer.assign_part_index(self.part_name, self)
 
         file_path = f"{self.base_path}/{file_name}" if self.base_path else file_name
 
@@ -52,6 +47,8 @@ class XmlPart(Part):
             writer.write_file(file_path, part_xml_string)
 
         writer.add_written_part(self)
+
+        self._relationships_to_xml(writer, relationships)
 
         for relationship in relationships:
             relationship.target.to_file(writer)
@@ -69,21 +66,21 @@ class XmlPart(Part):
         self.data = Attribute.from_xml(parser, file_path, xml)
 
     def _parse_relationships(self, parser: 'Parser', file_path: str | None):
-        relationship_file_path = self._get_relationship_file_path(file_path)
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         relationships = Relationship.from_file(parser, relationship_file_path, self)
         self.relationships = relationships
 
     def _get_file_xml(self, parser: 'Parser', file_path: str | None):
         file_path = self._get_file_path() if file_path is None else file_path
 
-        if not file_path:
+        if not file_path.lstrip('/'):
             return None
 
         file_data_string = parser.read_file(file_path.lstrip('/'))
         file_xml = etree.fromstring(file_data_string)
         return file_xml
 
-    def _get_relationship_file_path(self, file_path: str | None) -> str:
+    def _get_relationship_file_path(self, file_path: str | None = None) -> str:
         file_path = (self._get_file_path() if file_path is None else file_path) or ''
         path_elements = file_path.lstrip('/').split('/')
         path = ('/'.join(path_elements[:-1]) + '/_rels/' + path_elements[-1] + '.rels').lstrip('/')
@@ -94,5 +91,24 @@ class XmlPart(Part):
         return path
 
     def _has_relationship_file(self, parser: 'Parser', file_path: str | None) -> bool:
-        relationship_file_path = self._get_relationship_file_path(file_path).lstrip('/')
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path).lstrip('/')
         return relationship_file_path in parser.zip_file.namelist()
+
+    def _relationships_to_xml(self, writer: 'Writer', relationships: list['Relationship']):
+        relationships_element = etree.Element('Relationships', xmlns="http://schemas.openxmlformats.org/package/2006/relationships")
+
+        for relationship in relationships:
+            relationship_xml = relationship._to_xml(writer)
+            relationships_element.append(relationship_xml)
+
+        relationship_xml_string = etree.tostring(relationships_element, encoding='utf-8', xml_declaration=True)
+
+        file_name = writer.assign_part_index(self.part_name, self)
+
+        file_path = f"{self.base_path}/{file_name}" if self.base_path else file_name
+
+        if file_path and not file_path.startswith('/'):
+            file_path = '/' + file_path
+
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path)
+        writer.write_file(relationship_file_path, relationship_xml_string)
