@@ -3,10 +3,10 @@ from typing import IO
 from zipfile import ZipFile
 
 from pptx_editor.content_type.presentationml import PresentationML
-from pptx_editor.part import Part
 from pptx_editor.attribute import Attribute
+from pptx_editor.parts.xml_part import XmlPart
 
-class Presentation(Part):
+class Presentation(XmlPart):
     default_content_type = PresentationML.PRESENTATION
     default_base_path = '/ppt'
     default_part_name = 'presentation.xml'

@@ -48,10 +48,6 @@ class Parser:
     def parse_part(self, file_path: str):
         content_type = self.get_content_type(file_path)
 
-        if not content_type.endswith('xml'):
-            print(f"Skipping non-XML part {file_path} with content type {content_type}")
-            return None
-
         part_cls = PartRegistry().get_part_cls(content_type)
         part = part_cls.from_file(self.base, self, file_path, content_type)
 

@@ -1,6 +1,11 @@
-from pptx_editor.part import Part
+from typing import TYPE_CHECKING
 
-class Base(Part):
+from pptx_editor.parts.xml_part import XmlPart
+
+if TYPE_CHECKING:
+    from pptx_editor.part import Part
+
+class Base(XmlPart):
     default_content_type = None
     default_base_path = ''
     default_part_name = None

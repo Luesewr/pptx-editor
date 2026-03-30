@@ -1,7 +1,7 @@
 import re
 
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from lxml import etree
 
@@ -55,7 +55,7 @@ class Part():
             self.part_name = sys.intern(m.group(1) + '{i}' + m.group(2))
 
         self.relationships: list[Relationship] = []
-        self.attribute: Attribute | None = None
+        self.data: Any | None = None
 
         self.content_type: str | None = None
 
@@ -82,12 +82,6 @@ class Part():
         if writer.is_part_written(self):
             return
 
-        body_relationships = self.attribute.get_relationships() if self.attribute else []
-        relationships = list(dict.fromkeys(body_relationships + self.relationships))
-
-        writer.assign_relationship_ids(self, relationships)
-        writer.assign_part_indexes(relationships)
-
         if writer.has_part_index(self.part_name, self):
             file_name = writer.get_part_index(self.part_name, self)
         else:
@@ -101,43 +95,19 @@ class Part():
             file_path = '/' + file_path
 
         # Write the part's XML content to the zip file
-        if file_path is not None and self.attribute is not None:
-            part_xml = self.attribute.to_xml(writer, {})
-            part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True)
-            writer.write_file(file_path, part_xml_string)
+        if file_path is not None and self.data is not None:
+            writer.write_file(file_path, self.data)
 
         writer.add_written_part(self)
 
-        for relationship in relationships:
-            relationship.target.to_file(writer)
-
-
     def _parse_data(self, parser: 'Parser', file_path: str | None = None):
-        if self._has_relationship_file(parser, file_path):
-            self._parse_relationships(parser, file_path)
-
-        file_xml = self._get_file_xml(parser, file_path)
-
-        if file_xml is not None:
-            self._parse_xml(parser, file_path, file_xml)
-
-    def _parse_xml(self, parser: 'Parser', file_path: str | None, xml: etree._Element):
-        self.attribute = Attribute.from_xml(parser, file_path, xml)
-
-    def _parse_relationships(self, parser: 'Parser', file_path: str | None):
-        relationship_file_path = self._get_relationship_file_path(file_path)
-        relationships = Relationship.from_file(parser, relationship_file_path, self)
-        self.relationships = relationships
-
-    def _get_file_xml(self, parser: 'Parser', file_path: str | None):
         file_path = self._get_file_path() if file_path is None else file_path
 
         if not file_path:
             return None
 
-        file_data_string = parser.read_file(file_path.lstrip('/'))
-        file_xml = etree.fromstring(file_data_string)
-        return file_xml
+        file_data = parser.read_file(file_path.lstrip('/'))
+        self.data = file_data
 
     def _get_file_path(self) -> str | None:
         file_path = None
@@ -152,20 +122,6 @@ class Part():
 
         return file_path
 
-    def _get_relationship_file_path(self, file_path: str | None) -> str:
-        file_path = (self._get_file_path() if file_path is None else file_path) or ''
-        path_elements = file_path.lstrip('/').split('/')
-        path = ('/'.join(path_elements[:-1]) + '/_rels/' + path_elements[-1] + '.rels').lstrip('/')
-
-        if not path.startswith('/'):
-            path = '/' + path
-
-        return path
-
-    def _has_relationship_file(self, parser: 'Parser', file_path: str | None) -> bool:
-        relationship_file_path = self._get_relationship_file_path(file_path).lstrip('/')
-        return relationship_file_path in parser.zip_file.namelist()
-
     @classmethod
     def _register(cls):
         registry = PartRegistry()
@@ -176,7 +132,7 @@ class Part():
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
-        class_exceptions = ['Base']
+        class_exceptions = ['Base', 'XmlPart']
         missing_content_type = not hasattr(cls, 'default_content_type') or cls.default_content_type is None
         missing_default_base_path = not hasattr(cls, 'default_base_path') or cls.default_base_path is None
         missing_default_part_name = not hasattr(cls, 'default_part_name') or cls.default_part_name is None
