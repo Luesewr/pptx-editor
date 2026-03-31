@@ -1,3 +1,4 @@
+from pathlib import PurePosixPath
 import sys
 
 from lxml import etree
@@ -22,7 +23,7 @@ class Attribute:
         self.defined_namespace = defined_namespace
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', file_path: str | None, xml: etree._Element) -> 'Attribute':
+    def from_xml(cls, parser: 'Parser', file_path: PurePosixPath | None, xml: etree._Element) -> 'Attribute':
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         namespace = sys.intern(q.namespace) if q.namespace else None
@@ -38,7 +39,7 @@ class Attribute:
         return cls(name, namespace, values, attributes, defined_namespace=defined_namespace)
 
     @classmethod
-    def from_item(cls, parser: 'Parser', file_path: str | None, name: str, value: str) -> 'AttributeValue':
+    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, name: str, value: str) -> 'AttributeValue':
         registry = AttributeValueRegistry()
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None

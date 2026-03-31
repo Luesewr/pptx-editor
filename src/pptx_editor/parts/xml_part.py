@@ -1,3 +1,4 @@
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from lxml import etree
@@ -13,11 +14,11 @@ if TYPE_CHECKING:
 
 class XmlPart(Part):
     default_content_type: str | None = "application/xml"
-    default_base_path: str
+    default_base_path: PurePosixPath | None
     default_part_name: str | None
     default_attribute_name: str | None = None
 
-    def __init__(self, base: 'Base | None', file_path: str | None = None, content_type: str | None = None):
+    def __init__(self, base: 'Base | None', file_path: PurePosixPath | None = None, content_type: str | None = None):
         super().__init__(base, file_path, content_type)
 
         self.relationships: list[Relationship] = []
@@ -35,10 +36,12 @@ class XmlPart(Part):
 
         file_name = writer.assign_part_index(self.part_name, self)
 
-        file_path = f"{self.base_path}/{file_name}" if self.base_path else file_name
+        file_path = PurePosixPath(self.base_path) / file_name if self.base_path else file_name
 
-        if file_path and not file_path.startswith('/'):
-            file_path = '/' + file_path
+        if file_path and not file_path.is_absolute():
+            file_path = PurePosixPath('/') / file_path
+
+        print(f"Writing part {self} to file path {file_path} with {len(relationships)} relationships")
 
         # Write the part's XML content to the zip file
         if file_path is not None and self.data is not None:
@@ -53,7 +56,7 @@ class XmlPart(Part):
         for relationship in relationships:
             relationship.target.to_file(writer)
 
-    def _parse_data(self, parser: 'Parser', file_path: str | None = None):
+    def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
         if self._has_relationship_file(parser, file_path):
             self._parse_relationships(parser, file_path)
 
@@ -62,37 +65,40 @@ class XmlPart(Part):
         if file_xml is not None:
             self._parse_xml(parser, file_path, file_xml)
 
-    def _parse_xml(self, parser: 'Parser', file_path: str | None, xml: etree._Element):
+    def _parse_xml(self, parser: 'Parser', file_path: PurePosixPath | None, xml: etree._Element):
         self.data = Attribute.from_xml(parser, file_path, xml)
 
-    def _parse_relationships(self, parser: 'Parser', file_path: str | None):
+    def _parse_relationships(self, parser: 'Parser', file_path: PurePosixPath | None):
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         relationships = Relationship.from_file(parser, relationship_file_path, self)
         self.relationships = relationships
 
-    def _get_file_xml(self, parser: 'Parser', file_path: str | None):
+    def _get_file_xml(self, parser: 'Parser', file_path: PurePosixPath | None):
         file_path = self._get_file_path() if file_path is None else file_path
 
-        if not file_path.lstrip('/'):
+        if not file_path:
             return None
 
-        file_data_string = parser.read_file(file_path.lstrip('/'))
+        file_data_string = parser.read_file(file_path)
         file_xml = etree.fromstring(file_data_string)
         return file_xml
 
-    def _get_relationship_file_path(self, file_path: str | None = None) -> str:
-        file_path = (self._get_file_path() if file_path is None else file_path) or ''
-        path_elements = file_path.lstrip('/').split('/')
-        path = ('/'.join(path_elements[:-1]) + '/_rels/' + path_elements[-1] + '.rels').lstrip('/')
+    def _get_relationship_file_path(self, file_path: PurePosixPath | None = None) -> PurePosixPath:
+        file_path = (self._get_file_path() if file_path is None else file_path) or PurePosixPath('')
+        path = file_path.parent / '_rels' / (file_path.name + '.rels')
 
-        if not path.startswith('/'):
-            path = '/' + path
+        if not path.is_absolute():
+            path = PurePosixPath('/') / path
 
         return path
 
-    def _has_relationship_file(self, parser: 'Parser', file_path: str | None) -> bool:
-        relationship_file_path = self._get_relationship_file_path(file_path=file_path).lstrip('/')
-        return relationship_file_path in parser.zip_file.namelist()
+    def _has_relationship_file(self, parser: 'Parser', file_path: PurePosixPath | None) -> bool:
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path)
+
+        if relationship_file_path.is_absolute():
+            relationship_file_path = relationship_file_path.relative_to(relationship_file_path.anchor)
+
+        return relationship_file_path.as_posix() in parser.zip_file.namelist()
 
     def _relationships_to_xml(self, writer: 'Writer', relationships: list['Relationship']):
         relationships_element = etree.Element('Relationships', xmlns="http://schemas.openxmlformats.org/package/2006/relationships")
@@ -105,10 +111,10 @@ class XmlPart(Part):
 
         file_name = writer.assign_part_index(self.part_name, self)
 
-        file_path = f"{self.base_path}/{file_name}" if self.base_path else file_name
+        file_path = PurePosixPath(self.base_path) / PurePosixPath(file_name) if self.base_path else PurePosixPath(file_name)
 
-        if file_path and not file_path.startswith('/'):
-            file_path = '/' + file_path
+        if file_path and not file_path.is_absolute():
+            file_path = PurePosixPath('/') / file_path
 
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         writer.write_file(relationship_file_path, relationship_xml_string)

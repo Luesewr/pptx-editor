@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import PurePosixPath
 from zipfile import ZipFile
 from typing import IO, TYPE_CHECKING
 
@@ -13,8 +14,8 @@ if TYPE_CHECKING:
 class Parser:
     def __init__(self, file: IO):
         self.zip_file = ZipFile(file)
-        self.parts: dict[str, 'Part'] = {}
-        self.relationships: dict[str, dict[str, Relationship]] = defaultdict(dict)
+        self.parts: dict[PurePosixPath, 'Part'] = {}
+        self.relationships: dict[PurePosixPath, dict[str, Relationship]] = defaultdict(dict)
         self.content_types: ContentTypes | None = None
         self.base: Part | None = None
 
@@ -33,7 +34,7 @@ class Parser:
 
         Base.from_file(None, self, None, None)
 
-        powerpoint_part_path = '/ppt/presentation.xml'
+        powerpoint_part_path = PurePosixPath('/ppt/presentation.xml')
 
         if not self.has_part(powerpoint_part_path):
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
@@ -45,7 +46,7 @@ class Parser:
 
         return powerpoint_part
 
-    def parse_part(self, file_path: str):
+    def parse_part(self, file_path: PurePosixPath):
         content_type = self.get_content_type(file_path)
 
         part_cls = PartRegistry().get_part_cls(content_type)
@@ -53,7 +54,7 @@ class Parser:
 
         return part
 
-    def get_content_type(self, file_path: str) -> str:
+    def get_content_type(self, file_path: PurePosixPath) -> str:
         if self.content_types is None:
             raise PowerpointIntegrityError("Content types not loaded")
 
@@ -64,25 +65,28 @@ class Parser:
 
         return content_type
 
-    def read_file(self, file_path: str) -> bytes:
-        return self.zip_file.read(file_path)
+    def read_file(self, file_path: PurePosixPath) -> bytes:
+        if file_path.is_absolute():
+            file_path = file_path.relative_to(file_path.anchor)
 
-    def add_part(self, file_path: str | None, part: 'Part'):
+        return self.zip_file.read(file_path.as_posix())
+
+    def add_part(self, file_path: PurePosixPath | None, part: 'Part'):
         if file_path:
             self.parts[file_path] = part
 
-    def has_part(self, file_path: str) -> bool:
+    def has_part(self, file_path: PurePosixPath) -> bool:
         return file_path in self.parts
 
-    def add_relationship(self, file_path: str | None, relationship_id: str | None, relationship: 'Relationship'):
+    def add_relationship(self, file_path: PurePosixPath | None, relationship_id: str | None, relationship: 'Relationship'):
         if file_path and relationship_id:
             self.relationships[file_path][relationship_id] = relationship
 
-    def has_relationship(self, file_path: str, relationship_id: str) -> bool:
+    def has_relationship(self, file_path: PurePosixPath, relationship_id: str) -> bool:
         return relationship_id in self.relationships[file_path]
 
-    def get_part(self, file_path: str):
+    def get_part(self, file_path: PurePosixPath):
         return self.parts.get(file_path)
 
-    def get_relationship(self, file_path: str, relationship_id: str) -> 'Relationship | None':
+    def get_relationship(self, file_path: PurePosixPath, relationship_id: str) -> 'Relationship | None':
         return self.relationships[file_path].get(relationship_id)

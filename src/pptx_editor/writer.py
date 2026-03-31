@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import PurePosixPath
 from zipfile import ZipFile
 from typing import TYPE_CHECKING, IO
 
@@ -13,19 +14,22 @@ class Writer:
     def __init__(self, zip_file: ZipFile):
         self.zip_file = zip_file
         self.content_types = ContentTypes()
-        self.relationship_id_lookup = defaultdict(dict)
-        self.reverse_relationship_id_lookup = defaultdict(dict)
-        self.part_index_lookup = defaultdict(dict)
-        self.reverse_part_index_lookup = defaultdict(dict)
-        self.written_parts = set()
+        self.relationship_id_lookup: dict['Part', dict[str, 'Relationship']] = defaultdict(dict)
+        self.reverse_relationship_id_lookup: dict['Part', dict['Relationship', str]] = defaultdict(dict)
+        self.part_index_lookup: dict[str, dict['Part', str]] = defaultdict(dict)
+        self.reverse_part_index_lookup: dict[str, dict[str, 'Part']] = defaultdict(dict)
+        self.written_parts: set['Part'] = set()
 
     def write_to_buffer(self, presentation: 'Presentation'):
         base = presentation.base
 
         base.to_file(self)
 
-    def write_file(self, file_path: str, content: bytes):
-        self.zip_file.writestr(file_path.lstrip('/'), content)
+    def write_file(self, file_path: PurePosixPath, content: bytes):
+        if file_path.is_absolute():
+            file_path = file_path.relative_to(file_path.anchor)
+
+        self.zip_file.writestr(file_path.as_posix(), content)
 
     def assign_relationship_ids(self, part: 'Part', relationships: list['Relationship']):
         for relationship in relationships:
@@ -47,12 +51,12 @@ class Writer:
 
             self.assign_part_index(part_name, target_part)
 
-    def assign_part_index(self, part_name: str | None, part: 'Part') -> str | None:
+    def assign_part_index(self, part_name: str | None, part: 'Part') -> PurePosixPath:
         if part_name is None or '{i}' not in part_name:
-            return part_name
+            return PurePosixPath(part_name) if part_name is not None else PurePosixPath('')
 
         if part in self.part_index_lookup[part_name]:
-            return self.part_index_lookup[part_name][part]
+            return PurePosixPath(self.part_index_lookup[part_name][part])
 
         index = len(self.part_index_lookup[part_name]) + 1
         indexed_part_name = part_name.format(i=index)
@@ -60,7 +64,7 @@ class Writer:
         self.part_index_lookup[part_name][part] = indexed_part_name
         self.reverse_part_index_lookup[part_name][indexed_part_name] = part
 
-        return indexed_part_name
+        return PurePosixPath(indexed_part_name)
 
     def add_written_part(self, part: 'Part'):
         self.written_parts.add(part)
@@ -77,8 +81,9 @@ class Writer:
     def get_relationship_id(self, part: 'Part', relationship: 'Relationship') -> str | None:
         return self.reverse_relationship_id_lookup[part].get(relationship)
 
-    def get_part_index(self, part_name: str | None, part: 'Part') -> str | None:
+    def get_part_index(self, part_name: str | None, part: 'Part') -> PurePosixPath | None:
         if part_name is None:
             return None
 
-        return self.part_index_lookup[part_name].get(part)
+        part_index = self.part_index_lookup[part_name].get(part)
+        return PurePosixPath(part_index) if part_index is not None else None

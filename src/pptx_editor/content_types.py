@@ -1,3 +1,4 @@
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from lxml.etree import _Element
@@ -12,23 +13,23 @@ class ContentTypes():
         self.overrides = {}
 
     @staticmethod
-    def from_file(parser: 'Parser', file_path: str = '[Content_Types].xml'):
+    def from_file(parser: 'Parser', file_path: PurePosixPath = PurePosixPath('[Content_Types].xml')) -> 'ContentTypes':
         content_types = ContentTypes()
         content_types._parse_content_types(parser, file_path)
         return content_types
 
-    def get_content_type(self, file_path: str) -> str | None:
+    def get_content_type(self, file_path: PurePosixPath) -> str | None:
         if file_path in self.overrides:
             return self.overrides[file_path]
 
-        extension = file_path.split('.')[-1]
+        extension = file_path.suffix.lstrip('.')
         if extension in self.defaults:
             return self.defaults[extension]
 
         print(f"Integrity warning: No content type found for {file_path}")
         return None
 
-    def _parse_content_types(self, parser: 'Parser', file_path: str):
+    def _parse_content_types(self, parser: 'Parser', file_path: PurePosixPath):
         content_types = parser.read_file(file_path)
         root_element = etree.fromstring(content_types)
         self._parse_content_types_tree(root_element)
@@ -71,4 +72,4 @@ class ContentTypes():
             print("Integrity warning: Override element missing PartName attribute")
             return
 
-        self.overrides[content_part_name] = content_type_value
+        self.overrides[PurePosixPath(content_part_name)] = content_type_value

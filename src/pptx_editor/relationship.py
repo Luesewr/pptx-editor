@@ -1,6 +1,8 @@
+import posixpath
 import sys
 
 from typing import TYPE_CHECKING
+from pathlib import PurePosixPath
 
 from lxml import etree
 
@@ -20,8 +22,8 @@ class Relationship:
         self.origin = origin
 
     @classmethod
-    def from_file(cls, parser: 'Parser', file_path: str, origin: 'XmlPart'):
-        relationship_xml = parser.read_file(file_path.lstrip('/'))
+    def from_file(cls, parser: 'Parser', file_path: PurePosixPath, origin: 'XmlPart'):
+        relationship_xml = parser.read_file(file_path)
         relationship_tree = etree.fromstring(relationship_xml)
         part_file_path = cls._get_original_file_path(file_path)
 
@@ -45,7 +47,7 @@ class Relationship:
         return relationships
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: str, origin: 'XmlPart'):
+    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'XmlPart'):
         relationship_id = relationship_xml.get('Id')
         target_type = relationship_xml.get('Type')
         raw_target_path = relationship_xml.get('Target')
@@ -54,7 +56,7 @@ class Relationship:
             print("Integrity warning: Relationship element missing required attributes")
             return None
 
-        target_path = cls._get_target_file_path(file_path, raw_target_path)
+        target_path = cls._get_target_file_path(file_path, PurePosixPath(raw_target_path))
 
         target = parser.parse_part(target_path)
 
@@ -65,35 +67,34 @@ class Relationship:
         return cls(target_type, target, origin)
 
     def _to_xml(self, writer: 'Writer') -> etree._Element:
+        target_file_name = writer.assign_part_index(self.target.part_name, self.target)
+        target_location = PurePosixPath(self.target.base_path) / target_file_name if self.target.base_path else PurePosixPath(target_file_name)
+        relative_target_path = posixpath.relpath(target_location.as_posix(), start=(self.origin.base_path or PurePosixPath('/')).as_posix())
         relationship_element = etree.Element('Relationship')
         relationship_element.set('Id', writer.assign_relationship_id(self.origin, self))
         relationship_element.set('Type', self.target_type)
-        relationship_element.set('Target', writer.assign_part_index(self.target.part_name, self.target))
+        relationship_element.set('Target', relative_target_path)
         return relationship_element
 
     @staticmethod
-    def _get_target_file_path(location: str, target: str):
-        base_path = f'{location.rsplit("/", 1)[0]}'
-        current_target = f'../{target}'
+    def _get_target_file_path(location: PurePosixPath, target: PurePosixPath) -> PurePosixPath:
+        base_path = location.parent.parent
+        current_target = PurePosixPath(target)
 
-        while current_target.startswith('../'):
-            base_path = base_path.rsplit('/', 1)[0]
-            current_target = current_target.removeprefix('../')
+        path = PurePosixPath(posixpath.normpath(base_path / current_target))
 
-        path = base_path + '/' + current_target
-
-        if not path.startswith('/'):
-            path = '/' + path
+        if not path.is_absolute():
+            path = PurePosixPath('/') / path
 
         return path
 
     @staticmethod
-    def _get_original_file_path(file_path: str):
-        file_name = file_path.rsplit('/', 1)[-1].removesuffix('.rels')
+    def _get_original_file_path(file_path: PurePosixPath) -> PurePosixPath:
+        file_name = file_path.name.removesuffix('.rels')
 
-        part_file_path = file_path.rsplit('/', 2)[0] + '/' + file_name
+        part_file_path = file_path.parent.parent / file_name
 
-        if not part_file_path.startswith('/'):
-            part_file_path = '/' + part_file_path
+        if not part_file_path.is_absolute():
+            part_file_path = PurePosixPath('/') / part_file_path
 
         return part_file_path

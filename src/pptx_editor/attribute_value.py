@@ -1,3 +1,4 @@
+from pathlib import PurePosixPath
 import sys
 
 from lxml import etree
@@ -31,7 +32,7 @@ class AttributeValue:
         self.value = sys.intern(value)
 
     @classmethod
-    def from_item(cls, parser: 'Parser', file_path: str | None, name: str, value: str) -> 'AttributeValue':
+    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, name: str, value: str) -> 'AttributeValue':
         attribute_value = cls(name, value)
 
         return attribute_value
