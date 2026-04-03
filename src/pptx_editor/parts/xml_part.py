@@ -18,8 +18,8 @@ class XmlPart(Part):
     default_part_name: str | None
     default_attribute_name: str | None = None
 
-    def __init__(self, base: 'Base | None', file_path: PurePosixPath | None = None, content_type: str | None = None):
-        super().__init__(base, file_path, content_type)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.relationships: list[Relationship] = []
         self.data: Attribute | None = None
@@ -40,8 +40,6 @@ class XmlPart(Part):
 
         if file_path and not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path
-
-        print(f"Writing part {self} to file path {file_path} with {len(relationships)} relationships")
 
         # Write the part's XML content to the zip file
         if file_path is not None and self.data is not None:

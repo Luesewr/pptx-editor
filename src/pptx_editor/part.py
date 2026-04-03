@@ -4,9 +4,6 @@ import re
 import sys
 from typing import TYPE_CHECKING, Any
 
-from lxml import etree
-
-from pptx_editor.attribute import Attribute, AttributeValue
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
@@ -32,7 +29,7 @@ class Part():
     default_part_name: str | None
     default_attribute_name: str | None = None
 
-    def __init__(self, base: 'Base | None', file_path: PurePosixPath | None = None, content_type: str | None = None):
+    def __init__(self, base: 'Base | None', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
         from pptx_editor.parts.base import Base
 
         if base is not None:
@@ -46,14 +43,14 @@ class Part():
         self.part_name: str | None = None
 
         if file_path is None:
-            self.base_path = self.default_base_path if self.default_base_path else None
-            self.part_name = sys.intern(self.default_part_name) if self.default_part_name else None
+            self.base_path: PurePosixPath | None = self.default_base_path if self.default_base_path else None
+            self.part_name: str | None = sys.intern(self.default_part_name) if self.default_part_name else None
         else:
-            self.base_path = file_path.parent
-            self.part_name = sys.intern(file_path.name)
+            self.base_path: PurePosixPath | None = file_path.parent
+            self.part_name: str | None = sys.intern(file_path.name)
 
         if self.part_name and (m := re.match(r'(^.*?)\d+(\.xml)$', self.part_name)):
-            self.part_name = sys.intern(m.group(1) + '{i}' + m.group(2))
+            self.part_name: str | None = sys.intern(m.group(1) + '{i}' + m.group(2))
 
         self.relationships: list[Relationship] = []
         self.data: Any | None = None
@@ -61,18 +58,22 @@ class Part():
         self.content_type: str | None = None
 
         if content_type is not None:
-            self.content_type = sys.intern(content_type)
+            self.content_type: str | None = sys.intern(content_type)
         elif self.default_content_type is not None:
-            self.content_type = sys.intern(self.default_content_type)
+            self.content_type: str | None = sys.intern(self.default_content_type)
+
+        self.is_default = is_default
 
     @classmethod
-    def from_file(cls, base: 'Base | None', parser: 'Parser', file_path: PurePosixPath | None, content_type: str | None):
-        if file_path and parser.has_part(file_path):
-            return parser.get_part(file_path)
+    def from_file(cls, base: 'Base | None', parser: 'Parser', file_path: PurePosixPath | None, content_type: str | None, is_default: bool = False) -> 'Part':
+        if file_path and (part := parser.get_part(file_path)):
+            return part
 
-        part = cls(base, file_path, content_type)
+        part = cls(base, file_path, content_type, is_default)
 
-        if base is None:
+        from pptx_editor.parts.base import Base
+
+        if base is None and isinstance(part, Base):
             parser.base = part
 
         parser.add_part(file_path, part)
@@ -86,11 +87,9 @@ class Part():
         if writer.has_part_index(self.part_name, self):
             file_name = writer.get_part_index(self.part_name, self)
         else:
-            file_name = self.part_name
-            # if file_name is None:
-            #     raise PowerpointIntegrityError("Integrity warning: Part has no file path and cannot be written to file")
+            file_name = PurePosixPath(self.part_name)
 
-        file_path = PurePosixPath(self.base_path) / PurePosixPath(file_name) if self.base_path else PurePosixPath(file_name)
+        file_path = PurePosixPath(self.base_path) / file_name if self.base_path and file_name else file_name
 
         if file_path and not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path

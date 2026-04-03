@@ -1,7 +1,7 @@
 from collections import defaultdict
 from pathlib import PurePosixPath
 from zipfile import ZipFile
-from typing import TYPE_CHECKING, IO
+from typing import TYPE_CHECKING
 
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.relationship import Relationship
@@ -24,6 +24,8 @@ class Writer:
         base = presentation.base
 
         base.to_file(self)
+
+        self.content_types.to_file(self)
 
     def write_file(self, file_path: PurePosixPath, content: bytes):
         if file_path.is_absolute():
@@ -68,6 +70,18 @@ class Writer:
 
     def add_written_part(self, part: 'Part'):
         self.written_parts.add(part)
+
+        file_name = self.assign_part_index(part.part_name, part) if part.part_name else None
+
+        file_path = PurePosixPath(part.base_path) / file_name if part.base_path and file_name else file_name
+
+        if file_path and not file_path.is_absolute():
+            file_path = PurePosixPath('/') / file_path
+
+        if part.is_default and file_name:
+            self.content_types.defaults[PurePosixPath(file_name).suffix.lstrip('.')] = part.content_type
+        elif not part.is_default and file_path:
+            self.content_types.overrides[PurePosixPath(file_path)] = part.content_type
 
     def is_part_written(self, part: 'Part') -> bool:
         return part in self.written_parts

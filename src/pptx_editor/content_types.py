@@ -6,6 +6,7 @@ from lxml import etree
 
 if TYPE_CHECKING:
     from pptx_editor.parser import Parser
+    from pptx_editor.writer import Writer
 
 class ContentTypes():
     def __init__(self):
@@ -18,15 +19,34 @@ class ContentTypes():
         content_types._parse_content_types(parser, file_path)
         return content_types
 
-    def get_content_type(self, file_path: PurePosixPath) -> str | None:
+    def to_file(self, writer: 'Writer'):
+        root = etree.Element('Types', xmlns="http://schemas.openxmlformats.org/package/2006/content-types")
+
+        for extension, content_type in self.defaults.items():
+            default_element = etree.SubElement(root, 'Default')
+            default_element.set('Extension', extension)
+            default_element.set('ContentType', content_type)
+
+        for part_name, content_type in self.overrides.items():
+            override_element = etree.SubElement(root, 'Override')
+            override_element.set('PartName', part_name.as_posix())
+            override_element.set('ContentType', content_type)
+
+        content_types_xml_string = etree.tostring(root, encoding='utf-8', xml_declaration=True)
+        writer.write_file(PurePosixPath('[Content_Types].xml'), content_types_xml_string)
+
+    def get_override_content_type(self, file_path: PurePosixPath) -> str | None:
         if file_path in self.overrides:
             return self.overrides[file_path]
 
+        return None
+
+    def get_default_content_type(self, file_path: PurePosixPath) -> str | None:
         extension = file_path.suffix.lstrip('.')
+
         if extension in self.defaults:
             return self.defaults[extension]
 
-        print(f"Integrity warning: No content type found for {file_path}")
         return None
 
     def _parse_content_types(self, parser: 'Parser', file_path: PurePosixPath):

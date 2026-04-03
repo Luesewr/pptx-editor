@@ -9,6 +9,7 @@ from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
+    from pptx_editor.parts.base import Base
     from pptx_editor.parts.presentation import Presentation
 
 class Parser:
@@ -17,7 +18,7 @@ class Parser:
         self.parts: dict[PurePosixPath, 'Part'] = {}
         self.relationships: dict[PurePosixPath, dict[str, Relationship]] = defaultdict(dict)
         self.content_types: ContentTypes | None = None
-        self.base: Part | None = None
+        self.base: 'Base | None' = None
 
     def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type[Presentation] | None = None) -> 'Presentation':
         if return_location.lstrip('/') not in self.zip_file.namelist():
@@ -47,23 +48,28 @@ class Parser:
         return powerpoint_part
 
     def parse_part(self, file_path: PurePosixPath):
-        content_type = self.get_content_type(file_path)
+        content_type, is_default = self.get_content_type(file_path)
 
         part_cls = PartRegistry().get_part_cls(content_type)
-        part = part_cls.from_file(self.base, self, file_path, content_type)
+        part = part_cls.from_file(self.base, self, file_path, content_type, is_default)
 
         return part
 
-    def get_content_type(self, file_path: PurePosixPath) -> str:
+    def get_content_type(self, file_path: PurePosixPath) -> tuple[str, bool]:
         if self.content_types is None:
             raise PowerpointIntegrityError("Content types not loaded")
 
-        content_type = self.content_types.get_content_type(file_path)
+        override_content_type = self.content_types.get_override_content_type(file_path)
 
-        if content_type is None:
-            raise PowerpointIntegrityError(f"Integrity warning: No content type found for file {file_path}")
+        if override_content_type is not None:
+            return override_content_type, False
 
-        return content_type
+        default_content_type = self.content_types.get_default_content_type(file_path)
+
+        if default_content_type is not None:
+            return default_content_type, True
+
+        raise PowerpointIntegrityError(f"Integrity warning: No content type found for file {file_path}")
 
     def read_file(self, file_path: PurePosixPath) -> bytes:
         if file_path.is_absolute():

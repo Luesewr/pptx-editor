@@ -11,9 +11,9 @@ class Base(XmlPart):
     default_base_path: PurePosixPath | None = PurePosixPath('/')
     default_part_name = None
 
-    def __init__(self, base: 'Base | None', file_path: PurePosixPath | None = None, content_type: str | None = None):
+    def __init__(self, *args, **kwargs):
         self.parts: list['Part'] = []
-        super().__init__(base, file_path, content_type)
+        super().__init__(*args, **kwargs)
 
     def add_part(self, part: 'Part'):
         self.parts.append(part)

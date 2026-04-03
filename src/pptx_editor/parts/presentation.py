@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import PurePosixPath
 from typing import IO
 from zipfile import ZipFile
 
@@ -8,7 +9,7 @@ from pptx_editor.parts.xml_part import XmlPart
 
 class Presentation(XmlPart):
     default_content_type = PresentationML.PRESENTATION
-    default_base_path = '/ppt'
+    default_base_path = PurePosixPath('/ppt')
     default_part_name = 'presentation.xml'
 
     @staticmethod
