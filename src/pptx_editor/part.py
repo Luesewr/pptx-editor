@@ -1,8 +1,10 @@
-from pathlib import PurePosixPath
 import re
-
 import sys
+
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
+
+from lxml import etree
 
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.relationship import Relationship
@@ -64,6 +66,8 @@ class Part():
 
         self.is_default = is_default
 
+        self.relationships: list[Relationship] = []
+
     @classmethod
     def from_file(cls, base: 'Base | None', parser: 'Parser', file_path: PurePosixPath | None, content_type: str | None, is_default: bool = False) -> 'Part':
         if file_path and (part := parser.get_part(file_path)):
@@ -100,11 +104,21 @@ class Part():
 
         writer.add_written_part(self)
 
+        relationships = self.relationships
+
+        self._relationships_to_xml(writer, relationships)
+
+        for relationship in relationships:
+            relationship.target.to_file(writer)
+
     def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
         file_path = self._get_file_path() if file_path is None else file_path
 
         if not file_path:
             return None
+
+        if self._has_relationship_file(parser, file_path):
+            self._parse_relationships(parser, file_path)
 
         file_data = parser.read_file(file_path)
         self.data = file_data
@@ -121,6 +135,47 @@ class Part():
             file_path = PurePosixPath('/') / file_path
 
         return file_path
+
+    def _parse_relationships(self, parser: 'Parser', file_path: PurePosixPath | None):
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path)
+        relationships = Relationship.from_file(parser, relationship_file_path, self)
+        self.relationships = relationships
+
+    def _get_relationship_file_path(self, file_path: PurePosixPath | None = None) -> PurePosixPath:
+        file_path = (self._get_file_path() if file_path is None else file_path) or PurePosixPath('')
+        path = file_path.parent / '_rels' / (file_path.name + '.rels')
+
+        if not path.is_absolute():
+            path = PurePosixPath('/') / path
+
+        return path
+
+    def _has_relationship_file(self, parser: 'Parser', file_path: PurePosixPath | None) -> bool:
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path)
+
+        if relationship_file_path.is_absolute():
+            relationship_file_path = relationship_file_path.relative_to(relationship_file_path.anchor)
+
+        return relationship_file_path.as_posix() in parser.zip_file.namelist()
+
+    def _relationships_to_xml(self, writer: 'Writer', relationships: list['Relationship']):
+        relationships_element = etree.Element('Relationships', xmlns="http://schemas.openxmlformats.org/package/2006/relationships")
+
+        for relationship in relationships:
+            relationship_xml = relationship._to_xml(writer)
+            relationships_element.append(relationship_xml)
+
+        relationship_xml_string = etree.tostring(relationships_element, encoding='utf-8', xml_declaration=True)
+
+        file_name = writer.assign_part_index(self.part_name, self)
+
+        file_path = PurePosixPath(self.base_path) / PurePosixPath(file_name) if self.base_path else PurePosixPath(file_name)
+
+        if file_path and not file_path.is_absolute():
+            file_path = PurePosixPath('/') / file_path
+
+        relationship_file_path = self._get_relationship_file_path(file_path=file_path)
+        writer.write_file(relationship_file_path, relationship_xml_string)
 
     @classmethod
     def _register(cls):

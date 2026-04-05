@@ -20,7 +20,7 @@ class Parser:
         self.content_types: ContentTypes | None = None
         self.base: 'Base | None' = None
 
-    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type[Presentation] | None = None) -> 'Presentation':
+    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type['Presentation'] | None = None) -> 'Presentation':
         if return_location.lstrip('/') not in self.zip_file.namelist():
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_location} not found in zip file")
 

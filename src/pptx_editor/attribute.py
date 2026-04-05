@@ -13,13 +13,14 @@ if TYPE_CHECKING:
     from pptx_editor.writer import Writer
 
 class Attribute:
-    __slots__ = ['name', 'namespace', 'values', 'attributes', 'defined_namespace']
+    __slots__ = ['name', 'namespace', 'values', 'attributes', 'text', 'defined_namespace']
 
-    def __init__(self, name: str, namespace: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute'], defined_namespace: dict[str | None, str] | None = None):
+    def __init__(self, name: str, namespace: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute'], text: str | None, defined_namespace: dict[str | None, str] | None = None):
         self.name = sys.intern(name)
         self.namespace = sys.intern(namespace) if namespace else None
         self.values = values
         self.attributes = attributes
+        self.text = text
         self.defined_namespace = defined_namespace
 
     @classmethod
@@ -29,6 +30,7 @@ class Attribute:
         namespace = sys.intern(q.namespace) if q.namespace else None
         values = tuple(cls.from_item(parser, file_path, str(key), str(value)) for key, value in xml.attrib.items())
         attributes = tuple(Attribute.from_xml(parser, file_path, child) for child in xml)
+        text = sys.intern(xml.text) if xml.text is not None else xml.text
 
         defined_namespace = None
         parent_node = xml.getparent()
@@ -36,7 +38,7 @@ class Attribute:
         if parent_node is None or parent_node.nsmap != xml.nsmap:
             defined_namespace = {prefix: sys.intern(uri) for prefix, uri in xml.nsmap.items() if parent_node is None or prefix not in parent_node.nsmap}
 
-        return cls(name, namespace, values, attributes, defined_namespace=defined_namespace)
+        return cls(name, namespace, values, attributes, text, defined_namespace=defined_namespace)
 
     @classmethod
     def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, name: str, value: str) -> 'AttributeValue':
@@ -66,6 +68,9 @@ class Attribute:
 
         qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
         element = etree.Element(qname, nsmap=namespaces)
+
+        if self.text is not None:
+            element.text = self.text
 
         for value in self.values:
             value.to_xml(element, writer)

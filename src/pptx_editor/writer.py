@@ -44,6 +44,9 @@ class Writer:
         relationship_id = f"rId{len(self.relationship_id_lookup[part]) + 1}"
         self.relationship_id_lookup[part][relationship_id] = relationship
         self.reverse_relationship_id_lookup[part][relationship] = relationship_id
+
+        self.content_types.defaults['rels'] = 'application/vnd.openxmlformats-package.relationships+xml'
+
         return relationship_id
 
     def assign_part_indexes(self, relationships: list['Relationship']):
@@ -54,34 +57,38 @@ class Writer:
             self.assign_part_index(part_name, target_part)
 
     def assign_part_index(self, part_name: str | None, part: 'Part') -> PurePosixPath:
-        if part_name is None or '{i}' not in part_name:
-            return PurePosixPath(part_name) if part_name is not None else PurePosixPath('')
 
         if part in self.part_index_lookup[part_name]:
             return PurePosixPath(self.part_index_lookup[part_name][part])
 
-        index = len(self.part_index_lookup[part_name]) + 1
-        indexed_part_name = part_name.format(i=index)
+        if part_name is None:
+            return PurePosixPath('')
 
-        self.part_index_lookup[part_name][part] = indexed_part_name
-        self.reverse_part_index_lookup[part_name][indexed_part_name] = part
+        if '{i}' not in part_name:
+            file_name = PurePosixPath(part_name)
+        else:
+            index = len(self.part_index_lookup[part_name]) + 1
+            indexed_part_name = part_name.format(i=index)
 
-        return PurePosixPath(indexed_part_name)
+            self.part_index_lookup[part_name][part] = indexed_part_name
+            self.reverse_part_index_lookup[part_name][indexed_part_name] = part
+
+            file_name = PurePosixPath(indexed_part_name)
+
+        file_path = PurePosixPath(part.base_path) / file_name if part.base_path else file_name
+
+        if not file_path.is_absolute():
+            file_path = PurePosixPath('/') / file_path
+
+        if part.is_default:
+            self.content_types.defaults[file_name.suffix.lstrip('.')] = part.content_type
+        elif not part.is_default:
+            self.content_types.overrides[file_path] = part.content_type
+
+        return file_name
 
     def add_written_part(self, part: 'Part'):
         self.written_parts.add(part)
-
-        file_name = self.assign_part_index(part.part_name, part) if part.part_name else None
-
-        file_path = PurePosixPath(part.base_path) / file_name if part.base_path and file_name else file_name
-
-        if file_path and not file_path.is_absolute():
-            file_path = PurePosixPath('/') / file_path
-
-        if part.is_default and file_name:
-            self.content_types.defaults[PurePosixPath(file_name).suffix.lstrip('.')] = part.content_type
-        elif not part.is_default and file_path:
-            self.content_types.overrides[PurePosixPath(file_path)] = part.content_type
 
     def is_part_written(self, part: 'Part') -> bool:
         return part in self.written_parts
