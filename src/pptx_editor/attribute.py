@@ -64,6 +64,7 @@ class Attribute:
 
     def to_xml(self, writer: 'Writer', namespaces: dict) -> etree._Element:
         if self.defined_namespace:
+            namespaces = namespaces.copy()
             namespaces.update(self.defined_namespace)
 
         qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
