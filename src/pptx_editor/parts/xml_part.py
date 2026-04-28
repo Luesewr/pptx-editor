@@ -28,30 +28,27 @@ class XmlPart(Part):
             return
 
         body_relationships = self.data.get_relationships() if self.data else []
-        relationships = list(dict.fromkeys(body_relationships + self.relationships))
-
-        writer.assign_relationship_ids(self, relationships)
-        writer.assign_part_indexes(relationships)
+        self.relationships = list(dict.fromkeys(body_relationships + self.relationships))
 
         file_name = writer.assign_part_index(self.part_name, self)
-
         file_path = PurePosixPath(self.base_path) / file_name if self.base_path else file_name
 
-        if file_path and not file_path.is_absolute():
+        if not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path
 
+        writer.assign_relationship_ids(self, self.relationships)
+        writer.assign_relation_part_indexes(self.relationships)
+
         # Write the part's XML content to the zip file
-        if file_path is not None and self.data is not None:
+        if self.data is not None:
             part_xml = self.data.to_xml(writer, {})
-            part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True)
+            part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True, standalone=True)
             writer.write_file(file_path, part_xml_string)
 
         writer.add_written_part(self)
 
-        self._relationships_to_xml(writer, relationships)
-
-        for relationship in relationships:
-            relationship.target.to_file(writer)
+        if len(self.relationships) > 0:
+            self._relationships_to_xml(writer)
 
     def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
         if self._has_relationship_file(parser, file_path):

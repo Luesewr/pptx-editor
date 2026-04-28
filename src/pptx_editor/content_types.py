@@ -32,7 +32,7 @@ class ContentTypes():
             override_element.set('PartName', part_name.as_posix())
             override_element.set('ContentType', content_type)
 
-        content_types_xml_string = etree.tostring(root, encoding='utf-8', xml_declaration=True)
+        content_types_xml_string = etree.tostring(root, encoding='utf-8', xml_declaration=True, standalone=True)
         writer.write_file(PurePosixPath('[Content_Types].xml'), content_types_xml_string)
 
     def get_override_content_type(self, file_path: PurePosixPath) -> str | None:

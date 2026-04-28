@@ -88,28 +88,22 @@ class Part():
         if writer.is_part_written(self) or self.part_name is None:
             return
 
-        if writer.has_part_index(self.part_name, self):
-            file_name = writer.get_part_index(self.part_name, self)
-        else:
-            file_name = PurePosixPath(self.part_name)
+        file_name = writer.assign_part_index(self.part_name, self)
 
-        file_path = PurePosixPath(self.base_path) / file_name if self.base_path and file_name else file_name
+        file_path = PurePosixPath(self.base_path) / file_name if self.base_path else file_name
 
-        if file_path and not file_path.is_absolute():
+        if not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path
 
         # Write the part's XML content to the zip file
-        if file_path is not None and self.data is not None:
+        if self.data is not None:
             writer.write_file(file_path, self.data)
 
         writer.add_written_part(self)
 
-        relationships = self.relationships
+        if len(self.relationships) > 0:
+            self._relationships_to_xml(writer)
 
-        self._relationships_to_xml(writer, relationships)
-
-        for relationship in relationships:
-            relationship.target.to_file(writer)
 
     def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
         file_path = self._get_file_path() if file_path is None else file_path
@@ -158,14 +152,14 @@ class Part():
 
         return relationship_file_path.as_posix() in parser.zip_file.namelist()
 
-    def _relationships_to_xml(self, writer: 'Writer', relationships: list['Relationship']):
+    def _relationships_to_xml(self, writer: 'Writer'):
         relationships_element = etree.Element('Relationships', xmlns="http://schemas.openxmlformats.org/package/2006/relationships")
 
-        for relationship in relationships:
+        for relationship in self.relationships:
             relationship_xml = relationship._to_xml(writer)
             relationships_element.append(relationship_xml)
 
-        relationship_xml_string = etree.tostring(relationships_element, encoding='utf-8', xml_declaration=True)
+        relationship_xml_string = etree.tostring(relationships_element, encoding='utf-8', xml_declaration=True, standalone=True)
 
         file_name = writer.assign_part_index(self.part_name, self)
 
@@ -176,6 +170,9 @@ class Part():
 
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         writer.write_file(relationship_file_path, relationship_xml_string)
+
+        for relationship in self.relationships:
+            relationship.target.to_file(writer)
 
     @classmethod
     def _register(cls):

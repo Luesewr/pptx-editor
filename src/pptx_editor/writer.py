@@ -49,7 +49,7 @@ class Writer:
 
         return relationship_id
 
-    def assign_part_indexes(self, relationships: list['Relationship']):
+    def assign_relation_part_indexes(self, relationships: list['Relationship']):
         for relationship in relationships:
             target_part = relationship.target
             part_name = target_part.part_name if target_part.part_name else target_part.default_part_name

@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import IO
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from pptx_editor.content_type.presentationml import PresentationML
 from pptx_editor.attribute import Attribute
@@ -24,7 +24,7 @@ class Presentation(XmlPart):
 
         buffer = BytesIO()
 
-        with ZipFile(buffer, 'w') as zip_file:
+        with ZipFile(buffer, 'w', ZIP_DEFLATED) as zip_file:
             writer = Writer(zip_file)
             writer.write_to_buffer(self)
 
