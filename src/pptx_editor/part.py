@@ -153,7 +153,7 @@ class Part():
         return relationship_file_path.as_posix() in parser.zip_file.namelist()
 
     def _relationships_to_xml(self, writer: 'Writer'):
-        relationships_element = etree.Element('Relationships', xmlns="http://schemas.openxmlformats.org/package/2006/relationships")
+        relationships_element = etree.Element('Relationships', nsmap={None: "http://schemas.openxmlformats.org/package/2006/relationships"})
 
         for relationship in self.relationships:
             relationship_xml = relationship._to_xml(writer)

@@ -1,6 +1,8 @@
 import posixpath
+import re
 import sys
 
+from functools import cmp_to_key
 from typing import TYPE_CHECKING
 from pathlib import PurePosixPath
 
@@ -11,27 +13,30 @@ if TYPE_CHECKING:
     from pptx_editor.parser import Parser
     from pptx_editor.part import Part
     from pptx_editor.writer import Writer
-    from pptx_editor.parts.xml_part import XmlPart
 
 class Relationship:
     __slots__ = ['target_type', 'target', 'origin']
 
-    def __init__(self, target_type: str, target: 'Part', origin: 'XmlPart'):
+    def __init__(self, target_type: str, target: 'Part', origin: 'Part'):
         self.target_type = sys.intern(target_type)
         self.target = target
         self.origin = origin
 
     @classmethod
-    def from_file(cls, parser: 'Parser', file_path: PurePosixPath, origin: 'XmlPart'):
+    def from_file(cls, parser: 'Parser', file_path: PurePosixPath, origin: 'Part'):
         relationship_xml = parser.read_file(file_path)
         relationship_tree = etree.fromstring(relationship_xml)
         part_file_path = cls._get_original_file_path(file_path)
 
+        relationship_elements = []
+
         relationships = []
         for relationship_element in relationship_tree:
             relationship_id = relationship_element.get('Id')
-            if relationship_id is None:
-                print("Integrity warning: Relationship element missing Id attribute")
+            relationship_target = relationship_element.get('Target')
+
+            if relationship_id is None or relationship_target is None:
+                print("Integrity warning: Relationship element missing Id or Target attribute")
                 continue
 
             if parser.has_relationship(part_file_path, relationship_id):
@@ -42,12 +47,15 @@ class Relationship:
                     parser.add_relationship(part_file_path, relationship_id, relationship)
 
             if relationship is not None:
-                relationships.append(relationship)
+                relationship_elements.append((PurePosixPath(relationship_target), relationship))
+
+        sorted_elements = sorted(relationship_elements, key=cmp_to_key(cls._file_comparator))
+        relationships = [relationship for _, relationship in sorted_elements]
 
         return relationships
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'XmlPart'):
+    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'Part'):
         relationship_id = relationship_xml.get('Id')
         target_type = relationship_xml.get('Type')
         raw_target_path = relationship_xml.get('Target')
@@ -70,7 +78,7 @@ class Relationship:
         target_file_name = writer.assign_part_index(self.target.part_name, self.target)
         target_location = PurePosixPath(self.target.base_path) / target_file_name if self.target.base_path else PurePosixPath(target_file_name)
         relative_target_path = posixpath.relpath(target_location.as_posix(), start=(self.origin.base_path or PurePosixPath('/')).as_posix())
-        relationship_element = etree.Element('Relationship')
+        relationship_element = etree.Element('{http://schemas.openxmlformats.org/package/2006/relationships}Relationship')
         relationship_element.set('Id', writer.assign_relationship_id(self.origin, self))
         relationship_element.set('Type', self.target_type)
         relationship_element.set('Target', relative_target_path)
@@ -98,3 +106,15 @@ class Relationship:
             part_file_path = PurePosixPath('/') / part_file_path
 
         return part_file_path
+
+    @staticmethod
+    def _file_comparator(a: tuple[PurePosixPath, 'Relationship'], b: tuple[PurePosixPath, 'Relationship']) -> int:
+        a_name = a[0].name
+        b_name = b[0].name
+        a_index = re.match(r'(.*?)(\d+)\.[^\.]+$', a_name)
+        b_index = re.match(r'(.*?)(\d+)\.[^\.]+$', b_name)
+
+        if a_index and b_index and a_index.group(1) == b_index.group(1):
+            return int(a_index.group(2)) - int(b_index.group(2))
+
+        return 1 if a_name > b_name else (-1 if a_name < b_name else 0)

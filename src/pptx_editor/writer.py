@@ -57,7 +57,6 @@ class Writer:
             self.assign_part_index(part_name, target_part)
 
     def assign_part_index(self, part_name: str | None, part: 'Part') -> PurePosixPath:
-
         if part in self.part_index_lookup[part_name]:
             return PurePosixPath(self.part_index_lookup[part_name][part])
 

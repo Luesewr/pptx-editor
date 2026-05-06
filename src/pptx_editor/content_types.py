@@ -20,7 +20,7 @@ class ContentTypes():
         return content_types
 
     def to_file(self, writer: 'Writer'):
-        root = etree.Element('Types', xmlns="http://schemas.openxmlformats.org/package/2006/content-types")
+        root = etree.Element('Types', nsmap={None: "http://schemas.openxmlformats.org/package/2006/content-types"})
 
         for extension, content_type in self.defaults.items():
             default_element = etree.SubElement(root, 'Default')
