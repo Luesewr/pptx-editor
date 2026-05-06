@@ -24,19 +24,22 @@ class Attribute:
         self.defined_namespace = defined_namespace
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', file_path: PurePosixPath | None, xml: etree._Element) -> 'Attribute':
+    def from_xml(cls, parser, file_path, xml, ns_declarations=None):
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         namespace = sys.intern(q.namespace) if q.namespace else None
         values = tuple(cls.from_item(parser, file_path, str(key), str(value)) for key, value in xml.attrib.items())
-        attributes = tuple(Attribute.from_xml(parser, file_path, child) for child in xml)
+        attributes = tuple(Attribute.from_xml(parser, file_path, child, ns_declarations) for child in xml)
         text = sys.intern(xml.text) if xml.text is not None else xml.text
 
-        defined_namespace = None
-        parent_node = xml.getparent()
+        xml_path = xml.getroottree().getpath(xml)
 
-        if parent_node is None or parent_node.nsmap != xml.nsmap:
-            defined_namespace = {prefix: sys.intern(uri) for prefix, uri in xml.nsmap.items() if parent_node is None or prefix not in parent_node.nsmap}
+        defined_namespace = None
+        if ns_declarations is not None and xml_path in ns_declarations:
+            defined_namespace = {
+                pfx: sys.intern(uri)
+                for pfx, uri in ns_declarations[xml_path].items()
+            }
 
         return cls(name, namespace, values, attributes, text, defined_namespace=defined_namespace)
 

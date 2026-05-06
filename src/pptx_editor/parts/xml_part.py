@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -50,24 +51,43 @@ class XmlPart(Part):
         if len(self.relationships) > 0:
             self._relationships_to_xml(writer)
 
-    def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
+    def _parse_data(self, parser, file_path=None):
         if self._has_relationship_file(parser, file_path):
             self._parse_relationships(parser, file_path)
 
-        file_xml = self._get_file_xml(parser, file_path)
+        file_xml, ns_declarations = self._get_file_xml(parser, file_path)
 
         if file_xml is not None:
-            self._parse_xml(parser, file_path, file_xml)
+            self._parse_xml(parser, file_path, file_xml, ns_declarations)
 
-    def _parse_xml(self, parser: 'Parser', file_path: PurePosixPath | None, xml: etree._Element):
-        self.data = Attribute.from_xml(parser, file_path, xml)
+    def _parse_xml(self, parser, file_path, xml, ns_declarations):
+        self.data = Attribute.from_xml(parser, file_path, xml, ns_declarations)
 
-    def _get_file_xml(self, parser: 'Parser', file_path: PurePosixPath | None):
+    def _get_file_xml(self, parser, file_path):
         file_path = self._get_file_path() if file_path is None else file_path
-
         if not file_path:
-            return None
+            return None, None
 
-        file_data_string = parser.read_file(file_path)
-        file_xml = etree.fromstring(file_data_string)
-        return file_xml
+        file_data_bytes = parser.read_file(file_path)
+
+        ns_declarations = {}
+        pending_ns = []
+
+        context = etree.iterparse(
+            BytesIO(file_data_bytes),
+            events=('start-ns', 'start'),
+        )
+
+        for event, data in context:
+            data: etree._Element
+            if event == 'start-ns':
+                pending_ns.append(data)
+            elif event == 'start' and pending_ns:
+                data_path = data.getroottree().getpath(data)
+
+                ns_declarations[data_path] = {
+                    prefix: uri for prefix, uri in pending_ns
+                }
+                pending_ns = []
+
+        return context.root, ns_declarations
