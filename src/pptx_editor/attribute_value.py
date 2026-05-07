@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import PurePosixPath
 import sys
 
@@ -23,23 +24,28 @@ class AttributeValueRegistry(metaclass=SingletonMeta):
 class AttributeValue:
     default_namespace: str | None = None
 
-    __slots__ = ['name', 'namespace', 'value']
+    __slots__ = ['name', 'prefix', 'value']
 
-    def __init__(self, name: str, value: str):
-        q = etree.QName(name)
-        self.namespace = sys.intern(q.namespace) if q.namespace else None
-        self.name = sys.intern(q.localname)
+    def __init__(self, prefix: str | None, name: str, value: str):
+        self.prefix = prefix if prefix else None
+        self.name = sys.intern(name)
         self.value = sys.intern(value)
 
     @classmethod
-    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, name: str, value: str) -> 'AttributeValue':
-        attribute_value = cls(name, value)
+    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
+        q = etree.QName(name)
+        namespace = sys.intern(q.namespace) if q.namespace else None
+        prefix = namespaces.get(namespace) if namespace is not None else None
+        attribute_value = cls(prefix, q.localname, value)
 
         return attribute_value
 
-    def to_xml(self, element: etree._Element, writer: 'Writer'):
-        qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
-        element.set(qname, self.value)
+    def to_xml(self, writer: 'Writer', buffer: BytesIO):
+        if self.prefix:
+            qname = f"{self.prefix}:{self.name}"
+        else:
+            qname = self.name
+        buffer.write(f' {qname}="{self.value}"'.encode('utf-8'))
 
     @classmethod
     def _register(cls):
@@ -61,7 +67,7 @@ class AttributeValue:
             cls._register()
 
     def __str__(self):
-        return f"{self.namespace}:{self.name}={self.value}" if self.namespace else f"{self.name}={self.value}"
+        return f"{self.prefix}:{self.name}={self.value}" if self.prefix else f"{self.name}={self.value}"
 
     def __repr__(self):
         return self.__str__()

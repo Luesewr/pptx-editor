@@ -42,9 +42,11 @@ class XmlPart(Part):
 
         # Write the part's XML content to the zip file
         if self.data is not None:
-            part_xml = self.data.to_xml(writer, {})
-            part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True, standalone=True)
-            writer.write_file(file_path, part_xml_string)
+            buffer = BytesIO()
+            buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
+            self.data.to_xml(writer, buffer)
+            # part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True, standalone=True)
+            writer.write_file(file_path, buffer.getvalue())
 
         writer.add_written_part(self)
 

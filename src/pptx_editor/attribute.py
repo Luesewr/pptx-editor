@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import PurePosixPath
 import sys
 
@@ -13,43 +14,44 @@ if TYPE_CHECKING:
     from pptx_editor.writer import Writer
 
 class Attribute:
-    __slots__ = ['name', 'namespace', 'values', 'attributes', 'text', 'defined_namespace']
+    __slots__ = ['name', 'prefix', 'values', 'attributes', 'text', 'tail', 'defined_namespace']
 
-    def __init__(self, name: str, namespace: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute'], text: str | None, defined_namespace: dict[str | None, str] | None = None):
+    def __init__(self, name: str, prefix: str | None, values: Iterable['AttributeValue'], attributes: Iterable['Attribute'], text: str | None, tail: str | None = None, defined_namespace: dict[str | None, str] | None = None):
         self.name = sys.intern(name)
-        self.namespace = sys.intern(namespace) if namespace else None
+        self.prefix = sys.intern(prefix) if prefix else None
         self.values = values
         self.attributes = attributes
         self.text = text
+        self.tail = tail
         self.defined_namespace = defined_namespace
 
     @classmethod
     def from_xml(cls, parser, file_path, xml, ns_declarations=None):
         q = etree.QName(xml)
         name = sys.intern(q.localname)
-        namespace = sys.intern(q.namespace) if q.namespace else None
-        values = tuple(cls.from_item(parser, file_path, str(key), str(value)) for key, value in xml.attrib.items())
+        prefix = xml.prefix or None
+        values = tuple(cls.from_item(parser, file_path, xml.nsmap, str(key), str(value)) for key, value in xml.attrib.items())
         attributes = tuple(Attribute.from_xml(parser, file_path, child, ns_declarations) for child in xml)
         text = sys.intern(xml.text) if xml.text is not None else xml.text
-
+        tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail
         xml_path = xml.getroottree().getpath(xml)
 
         defined_namespace = None
         if ns_declarations is not None and xml_path in ns_declarations:
             defined_namespace = {
-                pfx: sys.intern(uri)
+                pfx: uri
                 for pfx, uri in ns_declarations[xml_path].items()
             }
 
-        return cls(name, namespace, values, attributes, text, defined_namespace=defined_namespace)
+        return cls(name, prefix, values, attributes, text, tail, defined_namespace=defined_namespace)
 
     @classmethod
-    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, name: str, value: str) -> 'AttributeValue':
+    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
         registry = AttributeValueRegistry()
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         attribute_value_cls = registry.get_attribute_value_cls(namespace)
-        return attribute_value_cls.from_item(parser, file_path, name, value)
+        return attribute_value_cls.from_item(parser, file_path, namespaces, name, value)
 
     def get_relationships(self) -> list['Relationship']:
         relationships = []
@@ -63,28 +65,58 @@ class Attribute:
         return relationships
 
     def get_values(self, name: str, namespace: str | None = None) -> list[AttributeValue]:
-        return [value for value in self.values if value.name == name and value.namespace == namespace]
+        return [value for value in self.values if value.name == name and value.prefix == namespace]
 
-    def to_xml(self, writer: 'Writer', namespaces: dict) -> etree._Element:
-        if self.defined_namespace:
-            namespaces = namespaces.copy()
-            namespaces.update(self.defined_namespace)
+    def to_xml(self, writer: 'Writer', buffer: BytesIO):
+        buffer.write('<'.encode('utf-8'))
 
-        qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
-        element = etree.Element(qname, nsmap=namespaces)
+        if self.prefix:
+            buffer.write(f"{self.prefix}:{self.name}".encode('utf-8'))
+        else:
+            buffer.write(self.name.encode('utf-8'))
 
-        if self.text is not None:
-            element.text = self.text
+        for prefix, uri in self.defined_namespace.items() if self.defined_namespace else []:
+            if prefix:
+                buffer.write(f' xmlns:{prefix}="{uri}"'.encode('utf-8'))
+            else:
+                buffer.write(f' xmlns="{uri}"'.encode('utf-8'))
 
         for value in self.values:
-            value.to_xml(element, writer)
+            value.to_xml(writer, buffer)
 
+        if not self.attributes and self.text is None:
+            buffer.write('/>'.encode('utf-8'))
+            return
+
+        buffer.write('>'.encode('utf-8'))
+
+        if self.text is not None:
+            buffer.write(self.text.encode('utf-8'))
 
         for attribute in self.attributes:
-            child_element = attribute.to_xml(writer, namespaces)
-            element.append(child_element)
+            attribute.to_xml(writer, buffer)
 
-        return element
+        if self.tail is not None:
+            buffer.write(self.tail.encode('utf-8'))
+
+        buffer.write(f'</{self.prefix + ":" if self.prefix else ""}{self.name}>'.encode('utf-8'))
+
+        # qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
+        # qname = f"{{{self.prefix}}}{self.name}" if self.prefix else self.name
+        # element = etree.Element(qname, nsmap=self.defined_namespace if self.defined_namespace else None)
+
+        # if self.text is not None:
+        #     element.text = self.text
+
+        # for value in self.values:
+        #     value.to_xml(element, writer, buffer)
+
+
+        # for attribute in self.attributes:
+        #     child_element = attribute.to_xml(writer, namespaces, buffer)
+        #     element.append(child_element)
+
+        # return element
 
     def pretty_print(self, indent=0):
         indent_str = ' ' * indent
@@ -93,7 +125,7 @@ class Attribute:
             child.pretty_print(indent + 2)
 
     def __str__(self):
-        return f"Attribute(name={self.name}, namespace={self.namespace}, values={[str(value) for value in self.values]})"
+        return f"Attribute(name={self.name}, namespace={self.prefix}, values={[str(value) for value in self.values]})"
 
     def __repr__(self):
         return self.__str__()
