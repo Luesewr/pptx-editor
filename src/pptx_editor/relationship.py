@@ -1,3 +1,4 @@
+from io import BytesIO
 import posixpath
 import re
 import sys
@@ -74,15 +75,13 @@ class Relationship:
 
         return cls(target_type, target, origin)
 
-    def _to_xml(self, writer: 'Writer') -> etree._Element:
+    def to_xml(self, writer: 'Writer', buffer: BytesIO):
         target_file_name = writer.assign_part_index(self.target.part_name, self.target)
         target_location = PurePosixPath(self.target.base_path) / target_file_name if self.target.base_path else PurePosixPath(target_file_name)
         relative_target_path = posixpath.relpath(target_location.as_posix(), start=(self.origin.base_path or PurePosixPath('/')).as_posix())
-        relationship_element = etree.Element('{http://schemas.openxmlformats.org/package/2006/relationships}Relationship')
-        relationship_element.set('Id', writer.assign_relationship_id(self.origin, self))
-        relationship_element.set('Type', self.target_type)
-        relationship_element.set('Target', relative_target_path)
-        return relationship_element
+        relationship_id = writer.assign_relationship_id(self.origin, self)
+
+        buffer.write(f'<Relationship Id="{relationship_id}" Type="{self.target_type}" Target="{relative_target_path}"/>'.encode('utf-8'))
 
     @staticmethod
     def _get_target_file_path(location: PurePosixPath, target: PurePosixPath) -> PurePosixPath:

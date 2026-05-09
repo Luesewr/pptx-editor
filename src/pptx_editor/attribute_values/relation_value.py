@@ -19,8 +19,6 @@ class RelationshipValue(AttributeValue):
         self.prefix = prefix if prefix else None
         self.name = sys.intern(name)
         self.value: 'str | Relationship' = sys.intern(value)
-        if self.prefix is not None:
-            print(f"Creating RelationshipValue with prefix {self.prefix}, name {self.name}, and value {self.value}")
 
     @classmethod
     def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipValue':

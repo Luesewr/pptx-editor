@@ -51,7 +51,7 @@ class XmlPart(Part):
         writer.add_written_part(self)
 
         if len(self.relationships) > 0:
-            self._relationships_to_xml(writer)
+            self.write_relationships_file(writer)
 
     def _parse_data(self, parser, file_path=None):
         if self._has_relationship_file(parser, file_path):

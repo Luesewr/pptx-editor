@@ -1,3 +1,4 @@
+from io import BytesIO
 import re
 import sys
 
@@ -102,7 +103,7 @@ class Part():
         writer.add_written_part(self)
 
         if len(self.relationships) > 0:
-            self._relationships_to_xml(writer)
+            self.write_relationships_file(writer)
 
 
     def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
@@ -152,14 +153,15 @@ class Part():
 
         return relationship_file_path.as_posix() in parser.zip_file.namelist()
 
-    def _relationships_to_xml(self, writer: 'Writer'):
-        relationships_element = etree.Element('Relationships', nsmap={None: "http://schemas.openxmlformats.org/package/2006/relationships"})
+    def write_relationships_file(self, writer: 'Writer'):
+        buffer = BytesIO()
+        buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
+        buffer.write('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'.encode('utf-8'))
 
         for relationship in self.relationships:
-            relationship_xml = relationship._to_xml(writer)
-            relationships_element.append(relationship_xml)
+            relationship.to_xml(writer, buffer)
 
-        relationship_xml_string = etree.tostring(relationships_element, encoding='utf-8', xml_declaration=True, standalone=True)
+        buffer.write('</Relationships>'.encode('utf-8'))
 
         file_name = writer.assign_part_index(self.part_name, self)
 
@@ -169,7 +171,7 @@ class Part():
             file_path = PurePosixPath('/') / file_path
 
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
-        writer.write_file(relationship_file_path, relationship_xml_string)
+        writer.write_file(relationship_file_path, buffer.getvalue())
 
         for relationship in self.relationships:
             relationship.target.to_file(writer)
