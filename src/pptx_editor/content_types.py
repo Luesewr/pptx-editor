@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -20,20 +21,18 @@ class ContentTypes():
         return content_types
 
     def to_file(self, writer: 'Writer'):
-        root = etree.Element('Types', nsmap={None: "http://schemas.openxmlformats.org/package/2006/content-types"})
+        buffer = BytesIO()
+        buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
 
+        buffer.write('<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'.encode('utf-8'))
         for extension, content_type in self.defaults.items():
-            default_element = etree.SubElement(root, 'Default')
-            default_element.set('Extension', extension)
-            default_element.set('ContentType', content_type)
+            buffer.write(f'<Default Extension="{extension}" ContentType="{content_type}"/>'.encode('utf-8'))
 
         for part_name, content_type in self.overrides.items():
-            override_element = etree.SubElement(root, 'Override')
-            override_element.set('PartName', part_name.as_posix())
-            override_element.set('ContentType', content_type)
+            buffer.write(f'<Override PartName="{part_name.as_posix()}" ContentType="{content_type}"/>'.encode('utf-8'))
 
-        content_types_xml_string = etree.tostring(root, encoding='utf-8', xml_declaration=True, standalone=True)
-        writer.write_file(PurePosixPath('[Content_Types].xml'), content_types_xml_string)
+        buffer.write('</Types>'.encode('utf-8'))
+        writer.write_file(PurePosixPath('[Content_Types].xml'), buffer.getvalue())
 
     def get_override_content_type(self, file_path: PurePosixPath) -> str | None:
         if file_path in self.overrides:
