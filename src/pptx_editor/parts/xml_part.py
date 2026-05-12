@@ -45,7 +45,6 @@ class XmlPart(Part):
             buffer = BytesIO()
             buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
             self.data.to_xml(writer, buffer)
-            # part_xml_string = etree.tostring(part_xml, encoding='utf-8', xml_declaration=True, standalone=True)
             writer.write_file(file_path, buffer.getvalue())
 
         writer.add_written_part(self)
@@ -53,7 +52,7 @@ class XmlPart(Part):
         if len(self.relationships) > 0:
             self.write_relationships_file(writer)
 
-    def _parse_data(self, parser, file_path=None):
+    def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
         if self._has_relationship_file(parser, file_path):
             self._parse_relationships(parser, file_path)
 
@@ -61,6 +60,8 @@ class XmlPart(Part):
 
         if file_xml is not None:
             self._parse_xml(parser, file_path, file_xml, ns_declarations)
+        else:
+            self.data = None
 
     def _parse_xml(self, parser, file_path, xml, ns_declarations):
         self.data = Attribute.from_xml(parser, file_path, xml, ns_declarations)

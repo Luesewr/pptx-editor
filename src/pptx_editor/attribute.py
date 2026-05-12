@@ -26,7 +26,7 @@ class Attribute:
         self.defined_namespace = defined_namespace
 
     @classmethod
-    def from_xml(cls, parser, file_path, xml, ns_declarations=None):
+    def from_xml(cls, parser: 'Parser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         prefix = xml.prefix or None
@@ -100,23 +100,6 @@ class Attribute:
             buffer.write(self.tail.encode('utf-8'))
 
         buffer.write(f'</{self.prefix + ":" if self.prefix else ""}{self.name}>'.encode('utf-8'))
-
-        # qname = etree.QName(self.namespace, self.name) if self.namespace else self.name
-        # qname = f"{{{self.prefix}}}{self.name}" if self.prefix else self.name
-        # element = etree.Element(qname, nsmap=self.defined_namespace if self.defined_namespace else None)
-
-        # if self.text is not None:
-        #     element.text = self.text
-
-        # for value in self.values:
-        #     value.to_xml(element, writer, buffer)
-
-
-        # for attribute in self.attributes:
-        #     child_element = attribute.to_xml(writer, namespaces, buffer)
-        #     element.append(child_element)
-
-        # return element
 
     def pretty_print(self, indent=0):
         indent_str = ' ' * indent

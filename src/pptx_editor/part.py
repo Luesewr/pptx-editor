@@ -5,8 +5,6 @@ import sys
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
-from lxml import etree
-
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
@@ -24,7 +22,11 @@ class PartRegistry(metaclass=SingletonMeta):
         self._registry[content_type] = part_cls
 
     def get_part_cls(self, content_type: str) -> type['Part']:
-        return self._registry.get(content_type, Part)
+        if content_type in self._registry:
+            return self._registry[content_type]
+        if '+xml' in content_type:
+            return self.get_part_cls('application/xml')
+        return Part
 
 class Part():
     default_content_type: str | None = None
@@ -195,6 +197,9 @@ class Part():
             raise ValueError(f"Part subclass {cls.__name__} must define a default_content_type class attribute, a default_base_path class attribute, and a default_part_name class attribute")
 
         if cls.__name__ not in class_exceptions:
+            cls._register()
+
+        if cls.__name__ == 'XmlPart':
             cls._register()
 
     def __str__(self) -> str:
