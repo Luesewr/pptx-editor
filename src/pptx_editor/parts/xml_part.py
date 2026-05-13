@@ -22,7 +22,7 @@ class XmlPart(Part):
 
         self.data: Attribute | None = None
 
-    def to_file(self, writer: '_OOXMLWriter'):
+    def _to_file(self, writer: '_OOXMLWriter'):
         if writer.is_part_written(self):
             return
 
@@ -42,13 +42,13 @@ class XmlPart(Part):
         if self.data is not None:
             buffer = BytesIO()
             buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
-            self.data.to_xml(writer, buffer)
+            self.data._to_xml(writer, buffer)
             writer.write_file(file_path, buffer.getvalue())
 
         writer.add_written_part(self)
 
         if len(self.relationships) > 0:
-            self.write_relationships_file(writer)
+            self._write_relationships_file(writer)
 
     def _parse_data(self, parser: '_OOXMLParser', file_path: PurePosixPath):
         if self._has_relationship_file(parser, file_path):
@@ -62,7 +62,7 @@ class XmlPart(Part):
             self.data = None
 
     def _parse_xml(self, parser, file_path, xml, ns_declarations):
-        self.data = Attribute.from_xml(parser, file_path, xml, ns_declarations)
+        self.data = Attribute._from_xml(parser, file_path, xml, ns_declarations)
 
     def _get_file_xml(self, parser, file_path):
         file_path = self._get_file_path() if file_path is None else file_path
@@ -86,9 +86,7 @@ class XmlPart(Part):
             elif event == 'start' and pending_ns:
                 data_path = data.getroottree().getpath(data)
 
-                ns_declarations[data_path] = {
-                    prefix: uri for prefix, uri in pending_ns
-                }
+                ns_declarations[data_path] = dict(pending_ns)
                 pending_ns = []
 
         return context.root, ns_declarations

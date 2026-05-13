@@ -32,7 +32,7 @@ class AttributeValue:
         self.value = sys.intern(value)
 
     @classmethod
-    def from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
+    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
@@ -40,7 +40,7 @@ class AttributeValue:
 
         return attribute_value
 
-    def to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
+    def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         if self.prefix:
             qname = f"{self.prefix}:{self.name}"
         else:

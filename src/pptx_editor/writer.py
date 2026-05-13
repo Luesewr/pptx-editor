@@ -21,11 +21,11 @@ class _OOXMLWriter:
         self.written_parts: set['Part'] = set()
 
     def write_to_buffer(self, presentation: 'Presentation'):
-        base = presentation.base
+        package = presentation.package
 
-        base.write_relationships_file(self)
+        package._write_relationships_file(self)
 
-        self.content_types.to_file(self)
+        self.content_types._to_file(self)
 
     def write_file(self, file_path: PurePosixPath, content: bytes):
         if file_path.is_absolute():

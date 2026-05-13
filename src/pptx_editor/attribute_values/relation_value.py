@@ -21,26 +21,29 @@ class RelationshipValue(AttributeValue):
         self.value: 'str | Relationship' = sys.intern(value)
 
     @classmethod
-    def from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipValue':
+    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipValue':
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
         relation_value = cls(prefix, q.localname, value)
 
-        relation_value.resolve_target(parser, file_path)
+        relation_value._resolve_target(parser, file_path)
 
         return relation_value
 
-    def to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
+    def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         if isinstance(self.value, str):
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{self.value}"'.encode('utf-8'))
         else:
             relationship_id = writer.assign_relationship_id(self.value.origin, self.value)
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{relationship_id}"'.encode('utf-8'))
 
-    def resolve_target(self, parser: '_OOXMLParser', file_path: PurePosixPath | None):
+    def _resolve_target(self, parser: '_OOXMLParser', file_path: PurePosixPath | None):
         if file_path is None:
             print('Integrity warning: Cannot resolve relation value without file path context')
+            return
+
+        if not isinstance(self.value, str):
             return
 
         relationship_id = self.value

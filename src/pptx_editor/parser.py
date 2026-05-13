@@ -9,7 +9,7 @@ from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
-    from pptx_editor.parts.base import Base
+    from pptx_editor.parts.package import Package
 
 class _OOXMLParser:
     def __init__(self, file: IO):
@@ -18,16 +18,16 @@ class _OOXMLParser:
         self.relationships: dict[PurePosixPath, dict[str, Relationship]] = defaultdict(dict)
         self.content_types: ContentTypes | None = None
 
-        from pptx_editor.parts.base import Base
-        self.base: 'Base' = Base(None)
+        from pptx_editor.parts.package import Package
+        self.package: 'Package' = Package(None)
 
     def parse_zip_file(self, return_location: str = '/ppt/presentation.xml') -> 'Part':
         if return_location.lstrip('/') not in self.zip_file.namelist():
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_location} not found in zip file")
 
-        self.content_types = ContentTypes.from_file(self)
+        self.content_types = ContentTypes._from_file(self)
 
-        self.base._parse_relationships(self, PurePosixPath('/'))
+        self.package._parse_relationships(self, PurePosixPath('/'))
 
         return_part_path = PurePosixPath(return_location)
         return_part = self.get_part(return_part_path)
@@ -41,7 +41,7 @@ class _OOXMLParser:
         content_type, is_default = self.get_content_type(file_path)
 
         part_cls = PartRegistry().get_part_cls(content_type)
-        part = part_cls.from_file(self, file_path, content_type, is_default)
+        part = part_cls._from_file(self, file_path, content_type, is_default)
 
         return part
 

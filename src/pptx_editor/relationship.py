@@ -24,14 +24,13 @@ class Relationship:
         self.origin = origin
 
     @classmethod
-    def from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, origin: 'Part'):
+    def _from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, origin: 'Part'):
         relationship_xml = parser.read_file(file_path)
         relationship_tree = etree.fromstring(relationship_xml)
         part_file_path = cls._get_original_file_path(file_path)
 
         relationship_elements = []
 
-        relationships = []
         for relationship_element in relationship_tree:
             relationship_id = relationship_element.get('Id')
             relationship_target = relationship_element.get('Target')
@@ -40,15 +39,13 @@ class Relationship:
                 print("Integrity warning: Relationship element missing Id or Target attribute")
                 continue
 
-            if parser.has_relationship(part_file_path, relationship_id):
-                relationship = parser.get_relationship(part_file_path, relationship_id)
-            else:
-                relationship = cls.from_xml(parser, relationship_element, file_path, origin)
-                if relationship is not None:
-                    parser.add_relationship(part_file_path, relationship_id, relationship)
+            relationship = cls._from_xml(parser, relationship_element, file_path, origin)
 
-            if relationship is not None:
-                relationship_elements.append((PurePosixPath(relationship_target), relationship))
+            if relationship is None:
+                continue
+
+            parser.add_relationship(part_file_path, relationship_id, relationship)
+            relationship_elements.append((PurePosixPath(relationship_target), relationship))
 
         sorted_elements = sorted(relationship_elements, key=cmp_to_key(cls._file_comparator))
         relationships = [relationship for _, relationship in sorted_elements]
@@ -56,7 +53,7 @@ class Relationship:
         return relationships
 
     @classmethod
-    def from_xml(cls, parser: '_OOXMLParser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'Part'):
+    def _from_xml(cls, parser: '_OOXMLParser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'Part'):
         relationship_id = relationship_xml.get('Id')
         target_type = relationship_xml.get('Type')
         raw_target_path = relationship_xml.get('Target')
@@ -66,7 +63,6 @@ class Relationship:
             return None
 
         target_path = cls._get_target_file_path(file_path, PurePosixPath(raw_target_path))
-
         target = parser.parse_part(target_path)
 
         if target is None:
@@ -75,7 +71,7 @@ class Relationship:
 
         return cls(target_type, target, origin)
 
-    def to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
+    def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         target_file_name = writer.assign_part_index(self.target.part_name, self.target)
         target_location = PurePosixPath(self.target.base_path) / target_file_name if self.target.base_path else PurePosixPath(target_file_name)
         relative_target_path = posixpath.relpath(target_location.as_posix(), start=(self.origin.base_path or PurePosixPath('/')).as_posix())
