@@ -10,48 +10,38 @@ from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
     from pptx_editor.parts.base import Base
-    from pptx_editor.parts.presentation import Presentation
 
-class Parser:
+class _OOXMLParser:
     def __init__(self, file: IO):
         self.zip_file = ZipFile(file)
         self.parts: dict[PurePosixPath, 'Part'] = {}
         self.relationships: dict[PurePosixPath, dict[str, Relationship]] = defaultdict(dict)
         self.content_types: ContentTypes | None = None
-        self.base: 'Base | None' = None
 
-    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml', return_type: type['Presentation'] | None = None) -> 'Presentation':
+        from pptx_editor.parts.base import Base
+        self.base: 'Base' = Base(None)
+
+    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml') -> 'Part':
         if return_location.lstrip('/') not in self.zip_file.namelist():
             raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_location} not found in zip file")
 
-        from pptx_editor.parts.presentation import Presentation
-
-        if return_type is None:
-            return_type = Presentation
-
         self.content_types = ContentTypes.from_file(self)
 
-        from pptx_editor.parts.base import Base
+        self.base._parse_relationships(self, PurePosixPath('/'))
 
-        Base.from_file(None, self, None, None)
+        return_part_path = PurePosixPath(return_location)
+        return_part = self.get_part(return_part_path)
 
-        powerpoint_part_path = PurePosixPath('/ppt/presentation.xml')
+        if return_part is None:
+            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_part_path} not found")
 
-        if not self.has_part(powerpoint_part_path):
-            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} not found")
-
-        powerpoint_part = self.get_part(powerpoint_part_path)
-
-        if powerpoint_part is None or not isinstance(powerpoint_part, return_type):
-            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {powerpoint_part_path} has incorrect content type")
-
-        return powerpoint_part
+        return return_part
 
     def parse_part(self, file_path: PurePosixPath):
         content_type, is_default = self.get_content_type(file_path)
 
         part_cls = PartRegistry().get_part_cls(content_type)
-        part = part_cls.from_file(self.base, self, file_path, content_type, is_default)
+        part = part_cls.from_file(self, file_path, content_type, is_default)
 
         return part
 

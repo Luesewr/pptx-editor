@@ -5,14 +5,13 @@ import sys
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
-from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import Parser
+    from pptx_editor.parser import _OOXMLParser
     from pptx_editor.parts.base import Base
-    from pptx_editor.writer import Writer
+    from pptx_editor.writer import _OOXMLWriter
 
 class PartRegistry(metaclass=SingletonMeta):
     def __init__(self):
@@ -34,16 +33,9 @@ class Part():
     default_part_name: str | None
     default_attribute_name: str | None = None
 
-    def __init__(self, base: 'Base | None', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
-        from pptx_editor.parts.base import Base
-
-        if base is not None:
-            base.add_part(self)
-            self.base: 'Base' = base
-        elif isinstance(self, Base):
-            self.base = self
-        else:
-            raise PowerpointIntegrityError("Integrity warning: Base part must be the root part of the presentation and cannot have a parent part")
+    def __init__(self, base: 'Base', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
+        base.add_part(self)
+        self.base = base
 
         self.part_name: str | None = None
 
@@ -72,22 +64,17 @@ class Part():
         self.relationships: list[Relationship] = []
 
     @classmethod
-    def from_file(cls, base: 'Base | None', parser: 'Parser', file_path: PurePosixPath | None, content_type: str | None, is_default: bool = False) -> 'Part':
+    def from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, content_type: str | None, is_default: bool = False) -> 'Part':
         if file_path and (part := parser.get_part(file_path)):
             return part
 
-        part = cls(base, file_path, content_type, is_default)
-
-        from pptx_editor.parts.base import Base
-
-        if base is None and isinstance(part, Base):
-            parser.base = part
+        part = cls(parser.base, file_path, content_type, is_default)
 
         parser.add_part(file_path, part)
         part._parse_data(parser, file_path)
         return part
 
-    def to_file(self, writer: 'Writer'):
+    def to_file(self, writer: '_OOXMLWriter'):
         if writer.is_part_written(self) or self.part_name is None:
             return
 
@@ -108,12 +95,7 @@ class Part():
             self.write_relationships_file(writer)
 
 
-    def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
-        file_path = self._get_file_path() if file_path is None else file_path
-
-        if not file_path:
-            return None
-
+    def _parse_data(self, parser: '_OOXMLParser', file_path: PurePosixPath):
         if self._has_relationship_file(parser, file_path):
             self._parse_relationships(parser, file_path)
 
@@ -133,12 +115,12 @@ class Part():
 
         return file_path
 
-    def _parse_relationships(self, parser: 'Parser', file_path: PurePosixPath | None):
+    def _parse_relationships(self, parser: '_OOXMLParser', file_path: PurePosixPath):
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         relationships = Relationship.from_file(parser, relationship_file_path, self)
         self.relationships = relationships
 
-    def _get_relationship_file_path(self, file_path: PurePosixPath | None = None) -> PurePosixPath:
+    def _get_relationship_file_path(self, file_path: PurePosixPath) -> PurePosixPath:
         file_path = (self._get_file_path() if file_path is None else file_path) or PurePosixPath('')
         path = file_path.parent / '_rels' / (file_path.name + '.rels')
 
@@ -147,7 +129,7 @@ class Part():
 
         return path
 
-    def _has_relationship_file(self, parser: 'Parser', file_path: PurePosixPath | None) -> bool:
+    def _has_relationship_file(self, parser: '_OOXMLParser', file_path: PurePosixPath) -> bool:
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
 
         if relationship_file_path.is_absolute():
@@ -155,7 +137,7 @@ class Part():
 
         return relationship_file_path.as_posix() in parser.zip_file.namelist()
 
-    def write_relationships_file(self, writer: 'Writer'):
+    def write_relationships_file(self, writer: '_OOXMLWriter'):
         buffer = BytesIO()
         buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
         buffer.write('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'.encode('utf-8'))

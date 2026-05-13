@@ -14,18 +14,23 @@ class Presentation(XmlPart):
 
     @staticmethod
     def from_zip_file(file: IO):
-        from pptx_editor.parser import Parser
+        from pptx_editor.parser import _OOXMLParser
 
-        parser = Parser(file)
-        return parser.parse_zip_file()
+        parser = _OOXMLParser(file)
+        part = parser.parse_zip_file()
+
+        if not isinstance(part, Presentation):
+            raise ValueError('The provided file does not contain a presentation part.')
+
+        return part
 
     def save_to_buffer(self) -> IO:
-        from pptx_editor.writer import Writer
+        from pptx_editor.writer import _OOXMLWriter
 
         buffer = BytesIO()
 
         with ZipFile(buffer, 'w', ZIP_DEFLATED) as zip_file:
-            writer = Writer(zip_file)
+            writer = _OOXMLWriter(zip_file)
             writer.write_to_buffer(self)
 
         buffer.seek(0)

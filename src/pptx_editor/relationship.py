@@ -11,9 +11,9 @@ from lxml import etree
 
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import Parser
+    from pptx_editor.parser import _OOXMLParser
     from pptx_editor.part import Part
-    from pptx_editor.writer import Writer
+    from pptx_editor.writer import _OOXMLWriter
 
 class Relationship:
     __slots__ = ['target_type', 'target', 'origin']
@@ -24,7 +24,7 @@ class Relationship:
         self.origin = origin
 
     @classmethod
-    def from_file(cls, parser: 'Parser', file_path: PurePosixPath, origin: 'Part'):
+    def from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, origin: 'Part'):
         relationship_xml = parser.read_file(file_path)
         relationship_tree = etree.fromstring(relationship_xml)
         part_file_path = cls._get_original_file_path(file_path)
@@ -56,7 +56,7 @@ class Relationship:
         return relationships
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'Part'):
+    def from_xml(cls, parser: '_OOXMLParser', relationship_xml: etree._Element, file_path: PurePosixPath, origin: 'Part'):
         relationship_id = relationship_xml.get('Id')
         target_type = relationship_xml.get('Type')
         raw_target_path = relationship_xml.get('Target')
@@ -75,7 +75,7 @@ class Relationship:
 
         return cls(target_type, target, origin)
 
-    def to_xml(self, writer: 'Writer', buffer: BytesIO):
+    def to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         target_file_name = writer.assign_part_index(self.target.part_name, self.target)
         target_location = PurePosixPath(self.target.base_path) / target_file_name if self.target.base_path else PurePosixPath(target_file_name)
         relative_target_path = posixpath.relpath(target_location.as_posix(), start=(self.origin.base_path or PurePosixPath('/')).as_posix())

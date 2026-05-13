@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pptx_editor.part import Part
     from pptx_editor.parts.presentation import Presentation
 
-class Writer:
+class _OOXMLWriter:
     def __init__(self, zip_file: ZipFile):
         self.zip_file = zip_file
         self.content_types = ContentTypes()
@@ -23,7 +23,7 @@ class Writer:
     def write_to_buffer(self, presentation: 'Presentation'):
         base = presentation.base
 
-        base.to_file(self)
+        base.write_relationships_file(self)
 
         self.content_types.to_file(self)
 
@@ -57,7 +57,7 @@ class Writer:
             self.assign_part_index(part_name, target_part)
 
     def assign_part_index(self, part_name: str | None, part: 'Part') -> PurePosixPath:
-        if part in self.part_index_lookup[part_name]:
+        if part_name is not None and part in self.part_index_lookup[part_name]:
             return PurePosixPath(self.part_index_lookup[part_name][part])
 
         if part_name is None:

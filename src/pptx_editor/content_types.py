@@ -6,8 +6,8 @@ from lxml.etree import _Element
 from lxml import etree
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import Parser
-    from pptx_editor.writer import Writer
+    from pptx_editor.parser import _OOXMLParser
+    from pptx_editor.writer import _OOXMLWriter
 
 class ContentTypes():
     def __init__(self):
@@ -15,12 +15,12 @@ class ContentTypes():
         self.overrides = {}
 
     @staticmethod
-    def from_file(parser: 'Parser', file_path: PurePosixPath = PurePosixPath('[Content_Types].xml')) -> 'ContentTypes':
+    def from_file(parser: '_OOXMLParser', file_path: PurePosixPath = PurePosixPath('[Content_Types].xml')) -> 'ContentTypes':
         content_types = ContentTypes()
         content_types._parse_content_types(parser, file_path)
         return content_types
 
-    def to_file(self, writer: 'Writer'):
+    def to_file(self, writer: '_OOXMLWriter'):
         buffer = BytesIO()
         buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
 
@@ -48,7 +48,7 @@ class ContentTypes():
 
         return None
 
-    def _parse_content_types(self, parser: 'Parser', file_path: PurePosixPath):
+    def _parse_content_types(self, parser: '_OOXMLParser', file_path: PurePosixPath):
         content_types = parser.read_file(file_path)
         root_element = etree.fromstring(content_types)
         self._parse_content_types_tree(root_element)

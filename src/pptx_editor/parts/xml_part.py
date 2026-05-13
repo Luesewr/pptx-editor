@@ -5,13 +5,11 @@ from typing import TYPE_CHECKING
 from lxml import etree
 
 from pptx_editor.part import Part
-from pptx_editor.relationship import Relationship
 from pptx_editor.attribute import Attribute
 
 if TYPE_CHECKING:
-    from pptx_editor.parts.base import Base
-    from pptx_editor.parser import Parser
-    from pptx_editor.writer import Writer
+    from pptx_editor.parser import _OOXMLParser
+    from pptx_editor.writer import _OOXMLWriter
 
 class XmlPart(Part):
     default_content_type: str | None = "application/xml"
@@ -24,7 +22,7 @@ class XmlPart(Part):
 
         self.data: Attribute | None = None
 
-    def to_file(self, writer: 'Writer'):
+    def to_file(self, writer: '_OOXMLWriter'):
         if writer.is_part_written(self):
             return
 
@@ -52,7 +50,7 @@ class XmlPart(Part):
         if len(self.relationships) > 0:
             self.write_relationships_file(writer)
 
-    def _parse_data(self, parser: 'Parser', file_path: PurePosixPath | None = None):
+    def _parse_data(self, parser: '_OOXMLParser', file_path: PurePosixPath):
         if self._has_relationship_file(parser, file_path):
             self._parse_relationships(parser, file_path)
 

@@ -10,8 +10,8 @@ from pptx_editor.attribute_values.relation_value import RelationshipValue
 from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import Parser
-    from pptx_editor.writer import Writer
+    from pptx_editor.parser import _OOXMLParser
+    from pptx_editor.writer import _OOXMLWriter
 
 class Attribute:
     __slots__ = ['name', 'prefix', 'values', 'attributes', 'text', 'tail', 'defined_namespace']
@@ -26,7 +26,7 @@ class Attribute:
         self.defined_namespace = defined_namespace
 
     @classmethod
-    def from_xml(cls, parser: 'Parser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
+    def from_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         prefix = xml.prefix or None
@@ -46,7 +46,7 @@ class Attribute:
         return cls(name, prefix, values, attributes, text, tail, defined_namespace=defined_namespace)
 
     @classmethod
-    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
+    def from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
         registry = AttributeValueRegistry()
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
@@ -67,7 +67,7 @@ class Attribute:
     def get_values(self, name: str, namespace: str | None = None) -> list[AttributeValue]:
         return [value for value in self.values if value.name == name and value.prefix == namespace]
 
-    def to_xml(self, writer: 'Writer', buffer: BytesIO):
+    def to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         buffer.write('<'.encode('utf-8'))
 
         if self.prefix:

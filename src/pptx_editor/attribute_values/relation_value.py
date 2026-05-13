@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from pptx_editor.attribute_value import AttributeValue
 
 if TYPE_CHECKING:
-    from pptx_editor.writer import Writer
-    from pptx_editor.parser import Parser
+    from pptx_editor.writer import _OOXMLWriter
+    from pptx_editor.parser import _OOXMLParser
     from pptx_editor.relationship import Relationship
 
 class RelationshipValue(AttributeValue):
@@ -21,7 +21,7 @@ class RelationshipValue(AttributeValue):
         self.value: 'str | Relationship' = sys.intern(value)
 
     @classmethod
-    def from_item(cls, parser: 'Parser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipValue':
+    def from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipValue':
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
@@ -31,14 +31,14 @@ class RelationshipValue(AttributeValue):
 
         return relation_value
 
-    def to_xml(self, writer: 'Writer', buffer: BytesIO):
+    def to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         if isinstance(self.value, str):
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{self.value}"'.encode('utf-8'))
         else:
             relationship_id = writer.assign_relationship_id(self.value.origin, self.value)
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{relationship_id}"'.encode('utf-8'))
 
-    def resolve_target(self, parser: 'Parser', file_path: PurePosixPath | None):
+    def resolve_target(self, parser: '_OOXMLParser', file_path: PurePosixPath | None):
         if file_path is None:
             print('Integrity warning: Cannot resolve relation value without file path context')
             return
