@@ -1,3 +1,5 @@
+import sys
+
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -5,7 +7,7 @@ from typing import TYPE_CHECKING
 from lxml import etree
 
 from pptx_editor.part import Part
-from pptx_editor.attribute import Attribute
+from pptx_editor.attribute import Attribute, AttributeRegistry
 
 if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
@@ -21,6 +23,16 @@ class XmlPart(Part):
         super().__init__(*args, **kwargs)
 
         self.data: Attribute | None = None
+
+    def get_attribute(self, name: str, prefix: str | None = None) -> 'Attribute | None':
+        if self.data:
+            return self.data.get_attribute(name, prefix)
+        return None
+
+    def get_attributes(self, name: str, prefix: str | None = None) -> list['Attribute']:
+        if self.data:
+            return self.data.get_attributes(name, prefix)
+        return []
 
     def _to_file(self, writer: '_OOXMLWriter'):
         if writer.is_part_written(self):
@@ -57,12 +69,18 @@ class XmlPart(Part):
         file_xml, ns_declarations = self._get_file_xml(parser, file_path)
 
         if file_xml is not None:
-            self._parse_xml(parser, file_path, file_xml, ns_declarations)
+            self.data = self._parse_xml(parser, file_path, file_xml, ns_declarations)
         else:
             self.data = None
 
-    def _parse_xml(self, parser, file_path, xml, ns_declarations):
-        self.data = Attribute._from_xml(parser, file_path, xml, ns_declarations)
+    @classmethod
+    def _parse_xml(cls, parser, file_path, xml, ns_declarations):
+        registry = AttributeRegistry()
+        q = etree.QName(xml.tag)
+        namespace = sys.intern(q.namespace) if q.namespace else None
+        name = sys.intern(q.localname)
+        attribute_cls = registry.get_attribute_cls(namespace, name)
+        return attribute_cls._from_xml(parser, file_path, xml, ns_declarations)
 
     def _get_file_xml(self, parser, file_path):
         file_path = self._get_file_path() if file_path is None else file_path

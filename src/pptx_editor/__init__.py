@@ -7,6 +7,7 @@ import importlib
 
 import pptx_editor.parts
 import pptx_editor.attribute_values
+import pptx_editor.attributes
 
 from pptx_editor.parts.presentation import Presentation
 
@@ -17,3 +18,4 @@ def import_submodules(package):
 
 import_submodules(pptx_editor.parts)
 import_submodules(pptx_editor.attribute_values)
+import_submodules(pptx_editor.attributes)
