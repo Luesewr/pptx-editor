@@ -26,7 +26,7 @@ class SlideIdList(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'sldIdLst'
 
-    def slides(self) -> list[Slide]:
+    def slides(self) -> list['Slide']:
         return [slide_id.get_slide() for slide_id in self._slide_ids()]
 
     def _slide_ids(self) -> list[SlideId]:

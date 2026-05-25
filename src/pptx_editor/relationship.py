@@ -57,10 +57,14 @@ class Relationship:
         relationship_id = relationship_xml.get('Id')
         target_type = relationship_xml.get('Type')
         raw_target_path = relationship_xml.get('Target')
+        target_mode = relationship_xml.get('TargetMode')
 
         if relationship_id is None or target_type is None or raw_target_path is None:
             print("Integrity warning: Relationship element missing required attributes")
             return None
+
+        if target_mode is not None and target_mode.lower() == 'external':
+            return ExternalRelationship(target_type, raw_target_path, origin)
 
         target_path = cls._get_target_file_path(file_path, PurePosixPath(raw_target_path))
         target = parser.parse_part(target_path)
@@ -70,6 +74,9 @@ class Relationship:
             return None
 
         return cls(target_type, target, origin)
+
+    def is_external(self) -> bool:
+        return isinstance(self, ExternalRelationship)
 
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         target_file_name = writer.assign_part_index(self.target.part_name, self.target)
@@ -113,3 +120,14 @@ class Relationship:
             return int(a_index.group(2)) - int(b_index.group(2))
 
         return 1 if a_name > b_name else (-1 if a_name < b_name else 0)
+
+class ExternalRelationship(Relationship):
+    __slots__ = ['target_type', 'target', 'origin']
+
+    def __init__(self, target_type: str, target: str, origin: 'Part'):
+        super().__init__(target_type, target, origin)
+
+    def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
+        relationship_id = writer.assign_relationship_id(self.origin, self)
+
+        buffer.write(f'<Relationship Id="{relationship_id}" Type="{self.target_type}" Target="{self.target}" TargetMode="External"/>'.encode('utf-8'))

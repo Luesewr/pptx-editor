@@ -157,7 +157,8 @@ class Part():
         writer.write_file(relationship_file_path, buffer.getvalue())
 
         for relationship in self.relationships:
-            relationship.target._to_file(writer)
+            if not relationship.is_external():
+                relationship.target._to_file(writer)
 
     @classmethod
     def _register(cls):

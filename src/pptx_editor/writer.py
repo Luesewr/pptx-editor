@@ -51,7 +51,11 @@ class _OOXMLWriter:
 
     def assign_relation_part_indexes(self, relationships: list['Relationship']):
         for relationship in relationships:
+            if relationship.is_external():
+                continue
+
             target_part = relationship.target
+
             part_name = target_part.part_name if target_part.part_name else target_part.default_part_name
 
             self.assign_part_index(part_name, target_part)
