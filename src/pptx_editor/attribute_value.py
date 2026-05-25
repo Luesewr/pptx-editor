@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import PurePosixPath
 import sys
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import quoteattr
 
 from lxml import etree
 from typing import TYPE_CHECKING
@@ -43,10 +43,10 @@ class AttributeValue:
 
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         if self.prefix:
-            qname = f"{self.prefix}:{escape(self.name)}"
+            qname = f"{self.prefix}:{self.name}"
         else:
-            qname = escape(self.name)
-        buffer.write(f' {qname}="{escape(self.value)}"'.encode('utf-8'))
+            qname = self.name
+        buffer.write(f' {qname}={quoteattr(self.value)}'.encode('utf-8'))
 
     @classmethod
     def _register(cls):
@@ -68,7 +68,7 @@ class AttributeValue:
             cls._register()
 
     def __str__(self):
-        return f"{self.prefix}:{escape(self.name)}={escape(self.value)}" if self.prefix else f"{escape(self.name)}={escape(self.value)}"
+        return f"{self.prefix}:{self.name}={self.value}" if self.prefix else f"{self.name}={self.value}"
 
     def __repr__(self):
         return self.__str__()

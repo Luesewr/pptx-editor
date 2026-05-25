@@ -4,7 +4,7 @@ import sys
 
 from lxml import etree
 from typing import TYPE_CHECKING, Iterable
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 from pptx_editor.attribute_value import AttributeValue, AttributeValueRegistry
 from pptx_editor.attribute_values.relation_value import RelationshipValue
@@ -102,9 +102,9 @@ class Attribute:
         buffer.write('<'.encode('utf-8'))
 
         if self.prefix:
-            buffer.write(f"{self.prefix}:{escape(self.name)}".encode('utf-8'))
+            buffer.write(f"{self.prefix}:{self.name}".encode('utf-8'))
         else:
-            buffer.write(escape(self.name).encode('utf-8'))
+            buffer.write(self.name.encode('utf-8'))
 
         for prefix, uri in self.defined_namespace.items() if self.defined_namespace else []:
             if prefix:
@@ -130,7 +130,7 @@ class Attribute:
         if self.tail is not None:
             buffer.write(escape(self.tail).encode('utf-8'))
 
-        buffer.write(f'</{self.prefix + ":" if self.prefix else ""}{escape(self.name)}>'.encode('utf-8'))
+        buffer.write(f'</{self.prefix + ":" if self.prefix else ""}{self.name}>'.encode('utf-8'))
 
     @classmethod
     def _register(cls):
