@@ -4,6 +4,7 @@ import sys
 
 from lxml import etree
 from typing import TYPE_CHECKING, Iterable
+from xml.sax.saxutils import escape
 
 from pptx_editor.attribute_value import AttributeValue, AttributeValueRegistry
 from pptx_editor.attribute_values.relation_value import RelationshipValue
@@ -101,9 +102,9 @@ class Attribute:
         buffer.write('<'.encode('utf-8'))
 
         if self.prefix:
-            buffer.write(f"{self.prefix}:{self.name}".encode('utf-8'))
+            buffer.write(f"{self.prefix}:{escape(self.name)}".encode('utf-8'))
         else:
-            buffer.write(self.name.encode('utf-8'))
+            buffer.write(escape(self.name).encode('utf-8'))
 
         for prefix, uri in self.defined_namespace.items() if self.defined_namespace else []:
             if prefix:
@@ -121,15 +122,15 @@ class Attribute:
         buffer.write('>'.encode('utf-8'))
 
         if self.text is not None:
-            buffer.write(self.text.encode('utf-8'))
+            buffer.write(escape(self.text).encode('utf-8'))
 
         for attribute in self.attributes:
             attribute._to_xml(writer, buffer)
 
         if self.tail is not None:
-            buffer.write(self.tail.encode('utf-8'))
+            buffer.write(escape(self.tail).encode('utf-8'))
 
-        buffer.write(f'</{self.prefix + ":" if self.prefix else ""}{self.name}>'.encode('utf-8'))
+        buffer.write(f'</{self.prefix + ":" if self.prefix else ""}{escape(self.name)}>'.encode('utf-8'))
 
     @classmethod
     def _register(cls):
@@ -154,7 +155,7 @@ class Attribute:
             cls._register()
 
     def __str__(self):
-        return f"{self.__class__.__name__}(name={self.name}, namespace={self.prefix}, values={[str(value) for value in self.values]})"
+        return f"{self.__class__.__name__}(name={escape(self.name)}, namespace={escape(self.prefix) if self.prefix else None}, values={[str(value) for value in self.values]})"
 
     def __repr__(self):
         return self.__str__()
