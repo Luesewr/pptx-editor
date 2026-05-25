@@ -23,6 +23,7 @@ class XmlPart(Part):
         super().__init__(*args, **kwargs)
 
         self.data: Attribute | None = None
+        self.docinfo: 'etree.DocInfo' | None = None
 
     def get_attribute(self, name: str, prefix: str | None = None) -> 'Attribute | None':
         if self.data:
@@ -53,7 +54,10 @@ class XmlPart(Part):
         # Write the part's XML content to the zip file
         if self.data is not None:
             buffer = BytesIO()
-            buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
+
+            if self.docinfo and self.docinfo.standalone is not None:
+                buffer.write(f'<?xml version="1.0" encoding="UTF-8" standalone="{"yes" if self.docinfo.standalone else "no"}"?>\n'.encode('utf-8'))
+
             self.data._to_xml(writer, buffer)
             writer.write_file(file_path, buffer.getvalue())
 
@@ -70,8 +74,10 @@ class XmlPart(Part):
 
         if file_xml is not None:
             self.data = self._parse_xml(parser, file_path, file_xml, ns_declarations)
+            self.docinfo = file_xml.getroottree().docinfo
         else:
             self.data = None
+            self.docinfo = None
 
     @classmethod
     def _parse_xml(cls, parser, file_path, xml, ns_declarations):
@@ -82,7 +88,7 @@ class XmlPart(Part):
         attribute_cls = registry.get_attribute_cls(namespace, name)
         return attribute_cls._from_xml(parser, file_path, xml, ns_declarations)
 
-    def _get_file_xml(self, parser, file_path):
+    def _get_file_xml(self, parser, file_path) -> tuple[etree._Element | None, dict[str, dict[str | None, str]] | None]:
         file_path = self._get_file_path() if file_path is None else file_path
         if not file_path:
             return None, None

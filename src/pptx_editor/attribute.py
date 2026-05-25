@@ -4,7 +4,7 @@ import sys
 
 from lxml import etree
 from typing import TYPE_CHECKING, Iterable
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape
 
 from pptx_editor.attribute_value import AttributeValue, AttributeValueRegistry
 from pptx_editor.attribute_values.relation_value import RelationshipValue

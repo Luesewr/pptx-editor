@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import PurePosixPath
+from xml.sax.saxutils import escape
 import sys
 
 from lxml import etree
@@ -33,10 +34,12 @@ class RelationshipValue(AttributeValue):
 
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         if isinstance(self.value, str):
-            buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{self.value}"'.encode('utf-8'))
+            escaped_value = escape(self.value, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
+            buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{escaped_value}"'.encode('utf-8'))
         else:
             relationship_id = writer.assign_relationship_id(self.value.origin, self.value)
-            buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{relationship_id}"'.encode('utf-8'))
+            escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
+            buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{escaped_relationship_id}"'.encode('utf-8'))
 
     def _resolve_target(self, parser: '_OOXMLParser', file_path: PurePosixPath | None):
         if file_path is None:
@@ -49,7 +52,8 @@ class RelationshipValue(AttributeValue):
         relationship_id = self.value
         relationship = parser.get_relationship(file_path, relationship_id)
         if relationship is None:
-            print(f"Integrity warning: No relationship found with id {relationship_id} in part {file_path}")
+            escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
+            print(f"Integrity warning: No relationship found with id {escaped_relationship_id} in part {file_path}")
             return
 
         self.value = relationship

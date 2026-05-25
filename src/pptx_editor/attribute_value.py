@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import PurePosixPath
 import sys
-from xml.sax.saxutils import quoteattr
+from xml.sax.saxutils import escape
 
 from lxml import etree
 from typing import TYPE_CHECKING
@@ -46,7 +46,9 @@ class AttributeValue:
             qname = f"{self.prefix}:{self.name}"
         else:
             qname = self.name
-        buffer.write(f' {qname}={quoteattr(self.value)}'.encode('utf-8'))
+
+        escaped_value = escape(self.value, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
+        buffer.write(f' {qname}="{escaped_value}"'.encode('utf-8'))
 
     @classmethod
     def _register(cls):
@@ -68,7 +70,8 @@ class AttributeValue:
             cls._register()
 
     def __str__(self):
-        return f"{self.prefix}:{self.name}={self.value}" if self.prefix else f"{self.name}={self.value}"
+        escaped_value = escape(self.value, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
+        return f"{self.prefix}:{self.name}={escaped_value}" if self.prefix else f"{self.name}={escaped_value}"
 
     def __repr__(self):
         return self.__str__()
