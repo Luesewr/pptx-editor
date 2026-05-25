@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from lxml import etree
 
 from pptx_editor.part import Part
-from pptx_editor.attribute import Attribute, AttributeRegistry
+from pptx_editor.xml_element import XmlElement, XmlElementRegistry
 
 if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
@@ -22,15 +22,15 @@ class XmlPart(Part):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.data: Attribute | None = None
+        self.data: XmlElement | None = None
         self.docinfo: 'etree.DocInfo' | None = None
 
-    def get_attribute(self, name: str, prefix: str | None = None) -> 'Attribute | None':
+    def get_attribute(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
         if self.data:
             return self.data.get_attribute(name, prefix)
         return None
 
-    def get_attributes(self, name: str, prefix: str | None = None) -> list['Attribute']:
+    def get_attributes(self, name: str, prefix: str | None = None) -> list['XmlElement']:
         if self.data:
             return self.data.get_attributes(name, prefix)
         return []
@@ -81,7 +81,7 @@ class XmlPart(Part):
 
     @classmethod
     def _parse_xml(cls, parser, file_path, xml, ns_declarations):
-        registry = AttributeRegistry()
+        registry = XmlElementRegistry()
         q = etree.QName(xml.tag)
         namespace = sys.intern(q.namespace) if q.namespace else None
         name = sys.intern(q.localname)

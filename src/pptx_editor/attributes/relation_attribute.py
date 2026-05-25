@@ -6,7 +6,7 @@ import sys
 from lxml import etree
 from typing import TYPE_CHECKING
 
-from pptx_editor.attribute_value import AttributeValue
+from pptx_editor.attribute import AttributeValue
 
 if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter

@@ -1,12 +1,12 @@
 from typing import TYPE_CHECKING, TypeGuard
 
-from pptx_editor.attribute import Attribute
+from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
 
 if TYPE_CHECKING:
-    from pptx_editor.attributes.shape import Shape
+    from pptx_editor.xml_elements.shape import Shape
 
-class CommonSlideData(Attribute):
+class CommonSlideData(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'cSld'
 
@@ -24,11 +24,11 @@ class CommonSlideData(Attribute):
 
         return shape_tree
 
-class ShapeTree(Attribute):
+class ShapeTree(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'spTree'
 
     def shapes(self) -> list['Shape']:
-        from pptx_editor.attributes.shape import Shape
+        from pptx_editor.xml_elements.shape import Shape
 
-        return [attribute for attribute in self.attributes if isinstance(attribute, Shape)]
+        return [attribute for attribute in self.children if isinstance(attribute, Shape)]

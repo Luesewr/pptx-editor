@@ -6,7 +6,7 @@ import pkgutil
 import importlib
 
 import pptx_editor.parts
-import pptx_editor.attribute_values
+import pptx_editor.xml_elements
 import pptx_editor.attributes
 
 from pptx_editor.parts.presentation import Presentation
@@ -17,5 +17,5 @@ def import_submodules(package):
         importlib.import_module(f"{package.__name__}.{module_name}")
 
 import_submodules(pptx_editor.parts)
-import_submodules(pptx_editor.attribute_values)
+import_submodules(pptx_editor.xml_elements)
 import_submodules(pptx_editor.attributes)

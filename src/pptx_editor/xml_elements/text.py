@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, TypeGuard
 
-from pptx_editor.attribute import Attribute
+from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
 
-class TextBody(Attribute):
+class TextBody(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'txBody'
 
@@ -16,11 +16,11 @@ class TextBody(Attribute):
 
         return attributes
 
-    def _is_paragraphs_valid(self, paragraphs: list[Attribute]) -> TypeGuard[list['Paragraph']]:
+    def _is_paragraphs_valid(self, paragraphs: list[XmlElement]) -> TypeGuard[list['Paragraph']]:
         return all(isinstance(paragraph, Paragraph) for paragraph in paragraphs)
 
 
-class Paragraph(Attribute):
+class Paragraph(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_name = 'p'
 
@@ -33,10 +33,10 @@ class Paragraph(Attribute):
 
         return attributes
 
-    def _is_runs_valid(self, runs: list[Attribute]) -> TypeGuard[list['Run']]:
+    def _is_runs_valid(self, runs: list[XmlElement]) -> TypeGuard[list['Run']]:
         return all(isinstance(run, Run) for run in runs)
 
-class Run(Attribute):
+class Run(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_name = 'r'
 
@@ -64,6 +64,6 @@ class Run(Attribute):
 
         text_attribute.text = value
 
-class Text(Attribute):
+class Text(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_name = 't'

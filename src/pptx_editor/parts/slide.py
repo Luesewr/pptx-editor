@@ -6,8 +6,8 @@ from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.xml_part import XmlPart
 
 if TYPE_CHECKING:
-    from pptx_editor.attributes.slide_data import CommonSlideData
-    from pptx_editor.attributes.shape import Shape
+    from pptx_editor.xml_elements.slide_data import CommonSlideData
+    from pptx_editor.xml_elements.shape import Shape
 
 class Slide(XmlPart):
     default_content_type = PresentationML.SLIDE
@@ -20,7 +20,7 @@ class Slide(XmlPart):
 
     @property
     def _common_slide_data(self) -> 'CommonSlideData':
-        from pptx_editor.attributes.slide_data import CommonSlideData
+        from pptx_editor.xml_elements.slide_data import CommonSlideData
         slide_id_list = self.get_attribute('cSld', 'p')
 
         if slide_id_list is None:

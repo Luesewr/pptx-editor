@@ -9,7 +9,7 @@ from pptx_editor.parts.xml_part import XmlPart
 from pptx_editor.parts.slide import Slide
 
 if TYPE_CHECKING:
-    from pptx_editor.attributes.id_list import SlideIdList
+    from pptx_editor.xml_elements.id_list import SlideIdList
 
 class Presentation(XmlPart):
     default_content_type = PresentationML.PRESENTATION
@@ -22,7 +22,7 @@ class Presentation(XmlPart):
 
     @property
     def _slide_id_list(self) -> 'SlideIdList':
-        from pptx_editor.attributes.id_list import SlideIdList
+        from pptx_editor.xml_elements.id_list import SlideIdList
         slide_id_list = self.get_attribute('sldIdLst', 'p')
 
         if slide_id_list is None:

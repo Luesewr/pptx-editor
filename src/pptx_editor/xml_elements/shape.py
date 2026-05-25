@@ -1,13 +1,13 @@
 from typing import TYPE_CHECKING, TypeGuard
 
-from pptx_editor.attribute import Attribute
-from pptx_editor.attributes.text import TextBody
+from pptx_editor.xml_element import XmlElement
+from pptx_editor.xml_elements.text import TextBody
 from pptx_editor.exceptions import PowerpointIntegrityError
 
 if TYPE_CHECKING:
     from pptx_editor.parts.slide import Slide
 
-class Shape(Attribute):
+class Shape(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'sp'
 
@@ -20,15 +20,15 @@ class Shape(Attribute):
 
         return text_body
 
-class NonVisualShapeProperties(Attribute):
+class NonVisualShapeProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'nvSpPr'
 
-class NonVisualGroupShapeProperties(Attribute):
+class NonVisualGroupShapeProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'nvGrpSpPr'
 
-class GroupShapeProperties(Attribute):
+class GroupShapeProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'grpSpPr'
 

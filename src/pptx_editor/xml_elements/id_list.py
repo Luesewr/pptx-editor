@@ -1,18 +1,18 @@
 from typing import TYPE_CHECKING, TypeGuard
 
-from pptx_editor.attribute import Attribute
+from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
 
 if TYPE_CHECKING:
     from pptx_editor.parts.slide import Slide
 
-class SlideId(Attribute):
+class SlideId(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'sldId'
 
     def get_slide(self) -> 'Slide':
         from pptx_editor.relationship import Relationship
-        from pptx_editor.attribute_values.relation_value import RelationshipValue
+        from pptx_editor.attributes.relation_attribute import RelationshipValue
         from pptx_editor.parts.slide import Slide
 
         slide_relationship_value = self.get_value('id', 'r')
@@ -22,7 +22,7 @@ class SlideId(Attribute):
 
         raise PowerpointIntegrityError('The sldId element does not have a valid relationship to a slide.')
 
-class SlideIdList(Attribute):
+class SlideIdList(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_name = 'sldIdLst'
 
@@ -37,5 +37,5 @@ class SlideIdList(Attribute):
 
         return attributes
 
-    def _is_slide_ids_valid(self, slide_ids: list[Attribute]) -> TypeGuard[list[SlideId]]:
+    def _is_slide_ids_valid(self, slide_ids: list[XmlElement]) -> TypeGuard[list[SlideId]]:
         return all(isinstance(slide_id, SlideId) for slide_id in slide_ids)
