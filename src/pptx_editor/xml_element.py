@@ -7,8 +7,8 @@ from lxml import etree
 from typing import TYPE_CHECKING
 from xml.sax.saxutils import escape
 
-from pptx_editor.attribute import AttributeValue, AttributeRegistry
-from pptx_editor.attributes.relation_attribute import RelationshipValue
+from pptx_editor.attribute import Attribute, AttributeRegistry
+from pptx_editor.attributes.relation_attribute import RelationshipAttribute
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
@@ -32,7 +32,7 @@ class XmlElement:
 
     __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'namespaces']
 
-    def __init__(self, name: str, prefix: str | None, attributes: tuple['AttributeValue', ...], children: tuple['XmlElement', ...], text: str | None, tail: str | None = None, namespaces: dict[str | None, str] | None = None):
+    def __init__(self, name: str, prefix: str | None, attributes: tuple['Attribute', ...], children: tuple['XmlElement', ...], text: str | None, tail: str | None = None, namespaces: dict[str | None, str] | None = None):
         self.name = sys.intern(name)
         self.prefix = sys.intern(prefix) if prefix else None
         self.attributes = attributes
@@ -44,7 +44,7 @@ class XmlElement:
     def get_relationships(self) -> list['Relationship']:
         relationships = []
         for value in self.attributes:
-            if isinstance(value, RelationshipValue) and hasattr(value, 'value') and isinstance(value.value, Relationship):
+            if isinstance(value, RelationshipAttribute) and hasattr(value, 'value') and isinstance(value.value, Relationship):
                 relationships.append(value.value)
 
         for child in self.children:
@@ -62,14 +62,14 @@ class XmlElement:
     def get_attributes(self, name: str, prefix: str | None = None) -> list['XmlElement']:
         return [attribute for attribute in self.children if attribute.name == name and attribute.prefix == prefix]
 
-    def get_value(self, name: str, prefix: str | None = None) -> 'AttributeValue | None':
+    def get_value(self, name: str, prefix: str | None = None) -> 'Attribute | None':
         for value in self.attributes:
             if value.name == name and value.prefix == prefix:
                 return value
 
         return None
 
-    def get_values(self, name: str, prefix: str | None = None) -> list[AttributeValue]:
+    def get_values(self, name: str, prefix: str | None = None) -> list[Attribute]:
         return [value for value in self.attributes if value.name == name and value.prefix == prefix]
 
     @classmethod
@@ -85,14 +85,14 @@ class XmlElement:
         tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail
         xml_path = xml.getroottree().getpath(xml)
 
-        defined_namespace = None
+        defined_namespace = []
         if ns_declarations is not None and xml_path in ns_declarations:
             defined_namespace = dict(ns_declarations[xml_path].items())
 
         return cls(name, prefix, attributes, children, text, tail, namespaces=defined_namespace)
 
     @classmethod
-    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
+    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
         registry = AttributeRegistry()
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
@@ -118,6 +118,8 @@ class XmlElement:
 
         if not self.children and self.text is None:
             buffer.write('/>'.encode('utf-8'))
+            if self.tail is not None:
+                buffer.write(escape(self.tail).encode('utf-8'))
             return
 
         buffer.write('>'.encode('utf-8'))

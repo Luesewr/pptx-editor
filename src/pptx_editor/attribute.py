@@ -19,10 +19,10 @@ class AttributeRegistry(metaclass=SingletonMeta):
     def register(self, namespace: str, attribute_value_cls):
         self._registry[namespace] = attribute_value_cls
 
-    def get_attribute_value_cls(self, namespace: str | None) -> type['AttributeValue']:
-        return self._registry.get(namespace, AttributeValue)
+    def get_attribute_value_cls(self, namespace: str | None) -> type['Attribute']:
+        return self._registry.get(namespace, Attribute)
 
-class AttributeValue:
+class Attribute:
     default_namespace: str | None = None
 
     __slots__ = ['name', 'prefix', 'value']
@@ -33,7 +33,7 @@ class AttributeValue:
         self.value = value
 
     @classmethod
-    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'AttributeValue':
+    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
         q = etree.QName(name)
         namespace = q.namespace if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
@@ -64,7 +64,7 @@ class AttributeValue:
         missing_namespace = not hasattr(cls, 'default_namespace') or cls.default_namespace is None
 
         if cls.__name__ not in class_exceptions and missing_namespace:
-            raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_namespace class attribute")
+            raise ValueError(f"Attribute subclass {cls.__name__} must define a default_namespace class attribute")
 
         if cls.__name__ not in class_exceptions:
             cls._register()

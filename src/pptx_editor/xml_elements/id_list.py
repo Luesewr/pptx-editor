@@ -12,12 +12,12 @@ class SlideId(XmlElement):
 
     def get_slide(self) -> 'Slide':
         from pptx_editor.relationship import Relationship
-        from pptx_editor.attributes.relation_attribute import RelationshipValue
+        from pptx_editor.attributes.relation_attribute import RelationshipAttribute
         from pptx_editor.parts.slide import Slide
 
         slide_relationship_value = self.get_value('id', 'r')
 
-        if isinstance(slide_relationship_value, RelationshipValue) and isinstance(slide_relationship_value.value, Relationship) and isinstance(slide_relationship_value.value.target, Slide):
+        if isinstance(slide_relationship_value, RelationshipAttribute) and isinstance(slide_relationship_value.value, Relationship) and isinstance(slide_relationship_value.value.target, Slide):
             return slide_relationship_value.value.target
 
         raise PowerpointIntegrityError('The sldId element does not have a valid relationship to a slide.')
