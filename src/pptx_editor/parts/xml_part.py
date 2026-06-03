@@ -80,7 +80,7 @@ class XmlPart(Part):
             self.docinfo = None
 
     @classmethod
-    def _parse_xml(cls, parser, file_path, xml, ns_declarations):
+    def _parse_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None):
         registry = XmlElementRegistry()
         q = etree.QName(xml.tag)
         namespace = sys.intern(q.namespace) if q.namespace else None
@@ -88,7 +88,7 @@ class XmlPart(Part):
         attribute_cls = registry.get_attribute_cls(namespace, name)
         return attribute_cls._from_xml(parser, file_path, xml, ns_declarations)
 
-    def _get_file_xml(self, parser, file_path) -> tuple[etree._Element | None, dict[str, dict[str | None, str]] | None]:
+    def _get_file_xml(self, parser: '_OOXMLParser', file_path: PurePosixPath | None) -> tuple[etree._Element | None, dict[str, dict[str | None, str]] | None]:
         file_path = self._get_file_path() if file_path is None else file_path
         if not file_path:
             return None, None
@@ -103,14 +103,19 @@ class XmlPart(Part):
             events=('start-ns', 'start'),
         )
 
+        declaration_entries = []
+
         for event, data in context:
             data: etree._Element
             if event == 'start-ns':
                 pending_ns.append(data)
             elif event == 'start' and pending_ns:
-                data_path = data.getroottree().getpath(data)
-
-                ns_declarations[data_path] = dict(pending_ns)
+                declaration_entries.append((data, pending_ns.copy()))
                 pending_ns = []
+
+        for data, pending_ns in declaration_entries:
+            data_path = data.getroottree().getpath(data)
+            ns_declarations[data_path] = dict(pending_ns)
+
 
         return context.root, ns_declarations

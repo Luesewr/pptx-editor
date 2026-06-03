@@ -87,7 +87,7 @@ class XmlElement:
 
         defined_namespace = []
         if ns_declarations is not None and xml_path in ns_declarations:
-            defined_namespace = dict(ns_declarations[xml_path].items())
+            defined_namespace = ns_declarations[xml_path].copy()
 
         return cls(name, prefix, attributes, children, text, tail, namespaces=defined_namespace)
 
