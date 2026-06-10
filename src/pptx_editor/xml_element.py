@@ -2,6 +2,7 @@ import sys
 
 from io import BytesIO
 from pathlib import PurePosixPath
+from inspect import isabstract
 
 from lxml import etree
 from typing import TYPE_CHECKING
@@ -144,6 +145,9 @@ class XmlElement:
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
+
+        if isabstract(cls):
+            return
 
         class_exceptions = []
         missing_namespace = not hasattr(cls, 'default_namespace') or cls.default_namespace is None
