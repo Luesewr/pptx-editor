@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from re import escape, Pattern, compile
 from typing import TypeGuard
 
 from pptx_editor.xml_element import XmlElement
@@ -41,7 +42,39 @@ class Paragraph(XmlElement):
     def paragraph_text(self) -> str:
         return ''.join(element.content_text for element in self.paragraph_elements)
 
+    def find_in_text(self, text: str) -> list['FindResult']:
+        return self.find_regex_in_text(escape(text))
 
+    def find_regex_in_text(self, pattern: str | Pattern) -> list['FindResult']:
+        if isinstance(pattern, str):
+            pattern = compile(pattern)
+
+        paragraph_text = self.paragraph_text
+        paragraph_elements = self.paragraph_elements
+        element_index = 0
+        current_offset = 0
+
+        results = []
+
+        for match in pattern.finditer(paragraph_text):
+            start_offset = match.start()
+            end_offset = match.end()
+            matched_elements = []
+
+            while element_index < len(paragraph_elements) and current_offset < end_offset:
+                element = paragraph_elements[element_index]
+                element_text_length = len(element.content_text)
+                element_end_offset = current_offset + element_text_length
+
+                if element_end_offset > start_offset:
+                    matched_elements.append(element)
+
+                current_offset = element_end_offset
+                element_index += 1
+
+            results.append(FindResult(matched_elements, start_offset, end_offset))
+
+        return results
 class ParagraphContent(XmlElement, ABC):
     @property
     @abstractmethod
@@ -89,3 +122,10 @@ class Break(ParagraphContent):
     @property
     def content_text(self) -> str:
         return '\n'
+
+
+class FindResult:
+    def __init__(self, elements: list['ParagraphContent'], start_offset: int, end_offset: int):
+        self.elements = elements
+        self.start_offset = start_offset
+        self.end_offset = end_offset
