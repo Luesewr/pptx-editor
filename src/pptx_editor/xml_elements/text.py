@@ -93,6 +93,8 @@ class Paragraph(XmlElement):
             dependent_matches.append(find_result)
 
         return results
+
+
 class ParagraphContent(XmlElement, ABC):
     @property
     @abstractmethod
@@ -128,10 +130,10 @@ class Run(ParagraphContent):
         text_attribute.text = value
 
 
-
 class Text(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_name = 't'
+
 
 class Break(ParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'

@@ -9,6 +9,7 @@ class StyleInheritMode(Enum):
     FROM_RIGHT = 2
     FROM_NONE = 3
 
+
 class MergeMode(Enum):
     LEFT_MERGE = 1
     RIGHT_MERGE = 2
@@ -17,13 +18,16 @@ class MergeMode(Enum):
     ISOLATE_RIGHT = 5
     DIVIDE = 6
 
+
 class NewlineMode(Enum):
     REPLACE = 1
     PRESERVE = 2
 
+
 class CleanupMode(Enum):
     NONE = 1
     DELETE_EMPTY = 2
+
 
 class ReplaceOptions:
     def __init__(self, style_inherit_mode: 'StyleInheritMode' = StyleInheritMode.FROM_LEFT, merge_mode: 'MergeMode' = MergeMode.LEFT_MERGE, newline_mode: 'NewlineMode' = NewlineMode.REPLACE, cleanup_mode: 'CleanupMode' = CleanupMode.DELETE_EMPTY):
@@ -201,7 +205,6 @@ class FindResult:
     def _cleanup_empty_elements(self) -> None:
         empty_elements = [element for element in self.elements if element.content_text == '']
         self.paragraph.children = [child for child in self.paragraph.children if child not in empty_elements]
-
 
     def _shift_offsets(self, offset_change: int) -> None:
         self.start_offset += offset_change
