@@ -1,6 +1,7 @@
 import re
 
 from abc import ABC, abstractmethod
+from itertools import chain
 from typing import TypeGuard
 
 from pptx_editor.xml_element import XmlElement
@@ -83,7 +84,7 @@ class Paragraph(XmlElement):
 
             match_end_offset = end_offset - current_offset
 
-            find_result = FindResult(match.group(0), match.groups(), self, match_elements, match_start_offset, match_end_offset)
+            find_result = FindResult(match.group(0), tuple(chain((match.group(0),), match.groups())), self, match_elements, match_start_offset, match_end_offset)
             results.append(find_result)
 
             for dependent_match in dependent_matches:
