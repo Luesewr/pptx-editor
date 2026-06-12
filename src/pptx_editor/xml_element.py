@@ -1,6 +1,8 @@
 import sys
 
+from inspect import isabstract
 from io import BytesIO
+from itertools import chain
 from pathlib import PurePosixPath
 
 from lxml import etree
@@ -71,6 +73,25 @@ class XmlElement:
 
     def get_values(self, name: str, prefix: str | None = None) -> list[Attribute]:
         return [value for value in self.attributes if value.name == name and value.prefix == prefix]
+
+    def copy(self):
+        copied_attributes = tuple(value.copy() for value in self.attributes)
+        copied_children = tuple(child.copy() for child in self.children)
+        return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, self.namespaces.copy() if self.namespaces is not None else None)
+
+    def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
+        if reference_element not in self.children:
+            raise ValueError('Reference element is not a child of this element.')
+
+        index = self.children.index(reference_element)
+        self.children = tuple(chain(self.children[:index], (new_element,), self.children[index:]))
+
+    def insert_element_after(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
+        if reference_element not in self.children:
+            raise ValueError('Reference element is not a child of this element.')
+
+        index = self.children.index(reference_element)
+        self.children = tuple(chain(self.children[:index + 1], (new_element,), self.children[index + 1:]))
 
     @classmethod
     def _from_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
@@ -144,6 +165,9 @@ class XmlElement:
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
+
+        if isabstract(cls):
+            return
 
         class_exceptions = []
         missing_namespace = not hasattr(cls, 'default_namespace') or cls.default_namespace is None

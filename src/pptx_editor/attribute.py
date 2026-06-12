@@ -32,6 +32,9 @@ class Attribute:
         self.name = sys.intern(name)
         self.value = value
 
+    def copy(self):
+        return self.__class__(self.prefix, self.name, self.value)
+
     @classmethod
     def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
         q = etree.QName(name)
