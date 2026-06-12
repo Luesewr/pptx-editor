@@ -1,9 +1,11 @@
+import re
+
 from abc import ABC, abstractmethod
-from re import escape, Pattern, compile
 from typing import TypeGuard
 
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
+from pptx_editor.find import FindResult
 
 class TextBody(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
@@ -43,36 +45,51 @@ class Paragraph(XmlElement):
         return ''.join(element.content_text for element in self.paragraph_elements)
 
     def find_in_text(self, text: str) -> list['FindResult']:
-        return self.find_regex_in_text(escape(text))
+        return self.find_regex_in_text(re.escape(text))
 
-    def find_regex_in_text(self, pattern: str | Pattern) -> list['FindResult']:
+    def find_regex_in_text(self, pattern: str | re.Pattern) -> list['FindResult']:
         if isinstance(pattern, str):
-            pattern = compile(pattern)
+            pattern = re.compile(pattern)
 
         paragraph_text = self.paragraph_text
         paragraph_elements = self.paragraph_elements
         element_index = 0
         current_offset = 0
 
+        dependent_matches = []
         results = []
 
         for match in pattern.finditer(paragraph_text):
             start_offset = match.start()
             end_offset = match.end()
-            matched_elements = []
+            match_elements = []
 
-            while element_index < len(paragraph_elements) and current_offset < end_offset:
-                element = paragraph_elements[element_index]
-                element_text_length = len(element.content_text)
-                element_end_offset = current_offset + element_text_length
-
-                if element_end_offset > start_offset:
-                    matched_elements.append(element)
-
-                current_offset = element_end_offset
+            while element_index < len(paragraph_elements) and current_offset + len(paragraph_elements[element_index].content_text) <= start_offset:
+                current_offset += len(paragraph_elements[element_index].content_text)
+                dependent_matches = []
                 element_index += 1
 
-            results.append(FindResult(matched_elements, start_offset, end_offset))
+            match_start_offset = start_offset - current_offset
+
+            match_elements.append(paragraph_elements[element_index])
+
+            while element_index < len(paragraph_elements) and current_offset + len(paragraph_elements[element_index].content_text) < end_offset:
+                current_offset += len(paragraph_elements[element_index].content_text)
+                dependent_matches = []
+                element_index += 1
+
+                if element_index < len(paragraph_elements):
+                    match_elements.append(paragraph_elements[element_index])
+
+            match_end_offset = end_offset - current_offset
+
+            find_result = FindResult(match.group(0), match.groups(), self, match_elements, match_start_offset, match_end_offset)
+            results.append(find_result)
+
+            for dependent_match in dependent_matches:
+                dependent_match.dependent_results.append(find_result)
+
+            dependent_matches.append(find_result)
 
         return results
 class ParagraphContent(XmlElement, ABC):
@@ -122,10 +139,3 @@ class Break(ParagraphContent):
     @property
     def content_text(self) -> str:
         return '\n'
-
-
-class FindResult:
-    def __init__(self, elements: list['ParagraphContent'], start_offset: int, end_offset: int):
-        self.elements = elements
-        self.start_offset = start_offset
-        self.end_offset = end_offset
