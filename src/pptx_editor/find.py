@@ -17,14 +17,19 @@ class MergeMode(Enum):
     ISOLATE_RIGHT = 5
     DIVIDE = 6
 
+class NewlineMode(Enum):
+    REPLACE = 1
+    PRESERVE = 2
+
 class CleanupMode(Enum):
     NONE = 1
     DELETE_EMPTY = 2
 
 class ReplaceOptions:
-    def __init__(self, style_inherit_mode: 'StyleInheritMode' = StyleInheritMode.FROM_LEFT, merge_mode: 'MergeMode' = MergeMode.LEFT_MERGE, cleanup_mode: 'CleanupMode' = CleanupMode.DELETE_EMPTY):
+    def __init__(self, style_inherit_mode: 'StyleInheritMode' = StyleInheritMode.FROM_LEFT, merge_mode: 'MergeMode' = MergeMode.LEFT_MERGE, newline_mode: 'NewlineMode' = NewlineMode.REPLACE, cleanup_mode: 'CleanupMode' = CleanupMode.DELETE_EMPTY):
         self.style_inherit_mode = style_inherit_mode
         self.merge_mode = merge_mode
+        self.newline_mode = newline_mode
         self.cleanup_mode = cleanup_mode
 
 
@@ -60,6 +65,10 @@ class FindResult:
             self._replace_with_format_divide(format_text)
 
         self._recalculate_elements()
+
+        if replace_options.newline_mode == NewlineMode.REPLACE:
+            self._process_newlines()
+            self._recalculate_elements()
 
         offset_change = len(last_element.content_text) - last_element_length
         self._shift_dependent_results(offset_change)
@@ -164,6 +173,26 @@ class FindResult:
         last_element_index = self.paragraph.paragraph_elements.index(last_element)
 
         self.elements = self.paragraph.paragraph_elements[first_element_index:last_element_index + 1]
+
+    def _process_newlines(self) -> None:
+        from pptx_editor.xml_elements.text import Run, Break
+        element_count = len(self.elements)
+
+        for element_index, element in enumerate(self.elements):
+            if isinstance(element, Run) and '\n' in element.content_text:
+                parts = element.content_text.split('\n')
+                element.content_text = parts[0]
+
+                for part in parts[1:]:
+                    break_element = Break('br', 'a', (), (), None)
+                    self.paragraph.insert_element_after(break_element, element)
+                    new_element = element.copy()
+                    new_element.content_text = part
+                    self.paragraph.insert_element_after(new_element, break_element)
+                    element = new_element
+
+                if element_index == element_count - 1:
+                    self.elements.append(element)
 
     def _shift_dependent_results(self, offset_change: int) -> None:
         for dependent_result in self.dependent_results:
