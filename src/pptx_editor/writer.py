@@ -21,7 +21,7 @@ class _OOXMLWriter:
         self.written_parts: set['Part'] = set()
 
     def write_to_buffer(self, presentation: 'Presentation'):
-        package = presentation.package
+        package = presentation.main_part
 
         package._write_relationships_file(self)
 

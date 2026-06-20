@@ -1,8 +1,6 @@
 from enum import Enum
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from pptx_editor.xml_elements.text import ParagraphContent, Paragraph
+import pptx_editor.xml_elements.text as text
 
 class StyleInheritMode(Enum):
     FROM_LEFT = 1
@@ -38,7 +36,7 @@ class ReplaceOptions:
 
 
 class FindResult:
-    def __init__(self, result: str, groups: tuple[str, ...], paragraph: 'Paragraph', elements: list['ParagraphContent'], start_offset: int, end_offset: int):
+    def __init__(self, result: str, groups: tuple[str, ...], paragraph: 'text.Paragraph', elements: list['text.ParagraphContent'], start_offset: int, end_offset: int):
         self.result = result
         self.groups = groups
         self.paragraph = paragraph
@@ -46,11 +44,16 @@ class FindResult:
         self.start_offset = start_offset
         self.end_offset = end_offset
         self.dependent_results: list['FindResult'] = []
+        self.is_dependent = False
+        self._replaced = False
 
     def replace_with(self, new_text: str, replace_options: 'ReplaceOptions' = ReplaceOptions()) -> None:
         self.replace_with_format(new_text.replace('{', '{{').replace('}', '}}'), replace_options)
 
     def replace_with_format(self, new_text: str, replace_options: 'ReplaceOptions' = ReplaceOptions()) -> None:
+        if self._replaced:
+            raise ValueError('This FindResult has already been replaced. You cannot replace it again.')
+
         format_text = new_text.format(*self.groups)
 
         if not self.elements:
@@ -79,6 +82,8 @@ class FindResult:
 
         if replace_options.cleanup_mode == CleanupMode.DELETE_EMPTY:
             self._cleanup_empty_elements()
+
+        self._replaced = True
 
     def _replace_with_format_left_merge(self, new_text: str) -> None:
         if not self.elements:
@@ -137,9 +142,8 @@ class FindResult:
         elif replace_options.style_inherit_mode == StyleInheritMode.FROM_RIGHT:
             new_element = last_element.copy()
         elif replace_options.style_inherit_mode == StyleInheritMode.FROM_NONE:
-            from pptx_editor.xml_elements.text import Run, Text
-            new_text_element = Text('t', 'a', (), (), '')
-            new_element = Run('r', 'a', (), (new_text_element,), None)
+            new_text_element = text.Text(part=self.paragraph.part)
+            new_element = text.Run(children=(new_text_element,), part=self.paragraph.part)
         else:
             raise ValueError('Invalid style inherit mode.')
 
@@ -161,13 +165,13 @@ class FindResult:
             first_element.content_text = first_element.content_text[:self.start_offset] + new_text + last_element.content_text[self.end_offset:]
             return
 
-        texts = _split_smooth(new_text, len(self.elements))
+        smooth_texts = _split_smooth(new_text, len(self.elements))
 
-        first_element.content_text = first_element.content_text[:self.start_offset] + texts[0]
-        last_element.content_text = texts[-1] + last_element.content_text[self.end_offset:]
+        first_element.content_text = first_element.content_text[:self.start_offset] + smooth_texts[0]
+        last_element.content_text = smooth_texts[-1] + last_element.content_text[self.end_offset:]
 
-        for element, text in zip(self.elements[1:-1], texts[1:-1]):
-            element.content_text = text
+        for element, smooth_text in zip(self.elements[1:-1], smooth_texts[1:-1]):
+            element.content_text = smooth_text
 
     def _recalculate_elements(self) -> None:
         first_element = self.elements[0]
@@ -179,16 +183,15 @@ class FindResult:
         self.elements = self.paragraph.paragraph_elements[first_element_index:last_element_index + 1]
 
     def _process_newlines(self) -> None:
-        from pptx_editor.xml_elements.text import Run, Break
         element_count = len(self.elements)
 
         for element_index, element in enumerate(self.elements):
-            if isinstance(element, Run) and '\n' in element.content_text:
+            if isinstance(element, text.Run) and '\n' in element.content_text:
                 parts = element.content_text.split('\n')
                 element.content_text = parts[0]
 
                 for part in parts[1:]:
-                    break_element = Break('br', 'a', (), (), None)
+                    break_element = text.Break(part=self.paragraph.part)
                     self.paragraph.insert_element_after(break_element, element)
                     new_element = element.copy()
                     new_element.content_text = part
@@ -203,12 +206,16 @@ class FindResult:
             dependent_result._shift_offsets(offset_change)
 
     def _cleanup_empty_elements(self) -> None:
-        empty_elements = [element for element in self.elements if element.content_text == '']
+        start_index = 1 if self.is_dependent else 0
+        end_index = len(self.elements) - 1 if len(self.dependent_results) > 0 else len(self.elements)
+        empty_elements = [element for element in self.elements[start_index:end_index] if element.content_text == '']
         self.paragraph.children = [child for child in self.paragraph.children if child not in empty_elements]
 
     def _shift_offsets(self, offset_change: int) -> None:
         self.start_offset += offset_change
-        self.end_offset += offset_change
+
+        if len(self.elements) == 1:
+            self.end_offset += offset_change
 
 
 def _split_smooth(text, n):

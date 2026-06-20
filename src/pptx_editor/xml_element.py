@@ -1,13 +1,12 @@
 import sys
 
-from inspect import isabstract
 from io import BytesIO
 from itertools import chain
 from pathlib import PurePosixPath
-
-from lxml import etree
 from typing import TYPE_CHECKING
 from xml.sax.saxutils import escape
+
+from lxml import etree
 
 from pptx_editor.attribute import Attribute, AttributeRegistry
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
@@ -17,6 +16,7 @@ from pptx_editor.singleton import SingletonMeta
 if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
     from pptx_editor.writer import _OOXMLWriter
+    from pptx_editor.parts.xml_part import XmlPart
 
 class XmlElementRegistry(metaclass=SingletonMeta):
     def __init__(self):
@@ -30,17 +30,19 @@ class XmlElementRegistry(metaclass=SingletonMeta):
 
 class XmlElement:
     default_namespace: str | None = None
+    default_prefix: str | None = None
     default_name: str | None = None
 
-    __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'namespaces']
+    __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'part', 'namespaces']
 
-    def __init__(self, name: str, prefix: str | None, attributes: tuple['Attribute', ...], children: tuple['XmlElement', ...], text: str | None, tail: str | None = None, namespaces: dict[str | None, str] | None = None):
-        self.name = sys.intern(name)
-        self.prefix = sys.intern(prefix) if prefix else None
+    def __init__(self, name: str | None = None, prefix: str | None = None, attributes: tuple['Attribute', ...] = (), children: tuple['XmlElement', ...] = (), text: str | None = None, tail: str | None = None, part: 'XmlPart | None' = None, namespaces: dict[str | None, str] | None = None):
+        self.name = sys.intern(name) if name else self.default_name
+        self.prefix = sys.intern(prefix) if prefix else self.default_prefix
         self.attributes = attributes
         self.children = children
         self.text = text
         self.tail = tail
+        self.part = part
         self.namespaces = namespaces
 
     def get_relationships(self) -> list['Relationship']:
@@ -54,30 +56,30 @@ class XmlElement:
 
         return relationships
 
-    def get_attribute(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
-        for attribute in self.children:
-            if attribute.name == name and attribute.prefix == prefix:
-                return attribute
+    def get_element(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
+        for element in self.children:
+            if element.name == name and element.prefix == prefix:
+                return element
 
         return None
 
-    def get_attributes(self, name: str, prefix: str | None = None) -> list['XmlElement']:
-        return [attribute for attribute in self.children if attribute.name == name and attribute.prefix == prefix]
+    def get_elements(self, name: str, prefix: str | None = None) -> list['XmlElement']:
+        return [element for element in self.children if element.name == name and element.prefix == prefix]
 
-    def get_value(self, name: str, prefix: str | None = None) -> 'Attribute | None':
+    def get_attribute(self, name: str, prefix: str | None = None) -> 'Attribute | None':
         for value in self.attributes:
             if value.name == name and value.prefix == prefix:
                 return value
 
         return None
 
-    def get_values(self, name: str, prefix: str | None = None) -> list[Attribute]:
+    def get_attributes(self, name: str, prefix: str | None = None) -> list['Attribute']:
         return [value for value in self.attributes if value.name == name and value.prefix == prefix]
 
     def copy(self):
         copied_attributes = tuple(value.copy() for value in self.attributes)
         copied_children = tuple(child.copy() for child in self.children)
-        return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, self.namespaces.copy() if self.namespaces is not None else None)
+        return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, self.part, self.namespaces.copy() if self.namespaces is not None else None)
 
     def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         if reference_element not in self.children:
@@ -104,13 +106,14 @@ class XmlElement:
         children = tuple(XmlPart._parse_xml(parser, file_path, child, ns_declarations) for child in xml)
         text = sys.intern(xml.text) if xml.text is not None else xml.text
         tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail
+        part = parser.get_part(file_path) if file_path is not None else None
         xml_path = xml.getroottree().getpath(xml)
 
         defined_namespace = []
         if ns_declarations is not None and xml_path in ns_declarations:
             defined_namespace = ns_declarations[xml_path].copy()
 
-        return cls(name, prefix, attributes, children, text, tail, namespaces=defined_namespace)
+        return cls(name, prefix, attributes, children, text, tail, part=part, namespaces=defined_namespace)
 
     @classmethod
     def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
@@ -166,17 +169,20 @@ class XmlElement:
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
-        if isabstract(cls):
+        if getattr(cls, 'is_abstract', False):
             return
 
         class_exceptions = []
         missing_namespace = not hasattr(cls, 'default_namespace') or cls.default_namespace is None
+        missing_prefix = not hasattr(cls, 'default_prefix') or cls.default_prefix is None
         missing_name = not hasattr(cls, 'default_name') or cls.default_name is None
 
         if cls.__name__ not in class_exceptions and missing_namespace:
             raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_namespace class attribute")
         if cls.__name__ not in class_exceptions and missing_name:
             raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_name class attribute")
+        if cls.__name__ not in class_exceptions and missing_prefix:
+            raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_prefix class attribute")
 
         if cls.__name__ not in class_exceptions:
             cls._register()

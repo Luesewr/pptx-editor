@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 class SlideId(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+    default_prefix = 'p'
     default_name = 'sldId'
 
     def get_slide(self) -> 'Slide':
@@ -15,7 +16,7 @@ class SlideId(XmlElement):
         from pptx_editor.attributes.relation_attribute import RelationshipAttribute
         from pptx_editor.parts.slide import Slide
 
-        slide_relationship_value = self.get_value('id', 'r')
+        slide_relationship_value = self.get_attribute('id', 'r')
 
         if isinstance(slide_relationship_value, RelationshipAttribute) and isinstance(slide_relationship_value.value, Relationship) and isinstance(slide_relationship_value.value.target, Slide):
             return slide_relationship_value.value.target
@@ -24,13 +25,14 @@ class SlideId(XmlElement):
 
 class SlideIdList(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+    default_prefix = 'p'
     default_name = 'sldIdLst'
 
     def slides(self) -> list['Slide']:
         return [slide_id.get_slide() for slide_id in self._slide_ids()]
 
     def _slide_ids(self) -> list[SlideId]:
-        attributes = self.get_attributes('sldId', 'p')
+        attributes = self.get_elements('sldId', 'p')
 
         if not self._is_slide_ids_valid(attributes):
             raise PowerpointIntegrityError('All sldId attributes must be of type SlideId.')

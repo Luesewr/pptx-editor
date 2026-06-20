@@ -10,7 +10,7 @@ from pptx_editor.singleton import SingletonMeta
 
 if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
-    from pptx_editor.parts.package import Package
+    from pptx_editor.xml_element import XmlElement
     from pptx_editor.writer import _OOXMLWriter
 
 class PartRegistry(metaclass=SingletonMeta):
@@ -33,9 +33,8 @@ class Part():
     default_part_name: str | None
     default_attribute_name: str | None = None
 
-    def __init__(self, package: 'Package', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
-        package._add_part(self)
-        self.package = package
+    def __init__(self, main_part: 'XmlElement', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
+        self.main_part = main_part
 
         self.part_name: str | None = None
 
@@ -63,12 +62,20 @@ class Part():
 
         self.relationships: list[Relationship] = []
 
+    def get_related_part(self, part_cls: type['Part']) -> 'Part | None':
+        for relationship in self.relationships:
+            if isinstance(relationship.target, part_cls):
+                return relationship.target
+        return None
+
     @classmethod
     def _from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, content_type: str | None, is_default: bool = False) -> 'Part':
         if file_path and (part := parser.get_part(file_path)):
             return part
 
-        part = cls(parser.package, file_path, content_type, is_default)
+        main_part = parser.main_part if parser.main_part else parser.package
+
+        part = cls(main_part, file_path, content_type, is_default)
 
         parser.add_part(file_path, part)
         part._parse_data(parser, file_path)
@@ -170,6 +177,9 @@ class Part():
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
+        if getattr(cls, 'is_abstract', False):
+            return
+
         class_exceptions = ['Package', 'XmlPart']
         missing_content_type = not hasattr(cls, 'default_content_type') or cls.default_content_type is None
         missing_default_base_path = not hasattr(cls, 'default_base_path') or cls.default_base_path is None
@@ -185,7 +195,7 @@ class Part():
             cls._register()
 
     def __str__(self) -> str:
-        return f"{(self.default_content_type or 'package').split('.')[-1].removesuffix('+xml')}(file_path={self._get_file_path()})"
+        return f"{(self.default_content_type or 'package').rsplit('.', maxsplit=1)[-1].removesuffix('+xml')}(file_path={self._get_file_path()})"
 
     def __repr__(self) -> str:
         return self.__str__()

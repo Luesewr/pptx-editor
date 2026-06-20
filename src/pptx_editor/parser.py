@@ -1,39 +1,37 @@
 from collections import defaultdict
 from pathlib import PurePosixPath
 from zipfile import ZipFile
-from typing import IO, TYPE_CHECKING
+from typing import IO
 
+import pptx_editor.parts.package as package_part
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
 
-if TYPE_CHECKING:
-    from pptx_editor.parts.package import Package
-
 class _OOXMLParser:
-    def __init__(self, file: IO):
+    def __init__(self, file: IO, return_location: str = '/ppt/presentation.xml'):
         self.zip_file = ZipFile(file)
         self.parts: dict[PurePosixPath, 'Part'] = {}
         self.relationships: dict[PurePosixPath, dict[str, Relationship]] = defaultdict(dict)
         self.content_types: ContentTypes | None = None
+        self.return_location = PurePosixPath(return_location)
 
-        from pptx_editor.parts.package import Package
-        self.package: 'Package' = Package(None)
+        self.package: 'package_part.Package' = package_part.Package(None)
+        self.main_part: 'Part' | None = None
 
-    def parse_zip_file(self, return_location: str = '/ppt/presentation.xml') -> 'Part':
-        if return_location.lstrip('/') not in self.zip_file.namelist():
-            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_location} not found in zip file")
+    def parse_zip_file(self) -> 'Part':
+        if str(self.return_location).lstrip('/') not in self.zip_file.namelist():
+            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {self.return_location} not found in zip file")
 
         self.content_types = ContentTypes._from_file(self)
 
         self.package._parse_relationships(self, PurePosixPath('/'))
 
-        return_part_path = PurePosixPath(return_location)
-        return_part = self.get_part(return_part_path)
+        return_part = self.get_part(self.return_location)
 
         if return_part is None:
-            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {return_part_path} not found")
+            raise PowerpointIntegrityError(f"Integrity warning: Main presentation part {self.return_location} not found")
 
         return return_part
 

@@ -16,7 +16,4 @@ class PresentationML(StrEnum):
     TABLE_STYLES = f"{presentationml_prefix}.tableStyles+xml"
     TAGS = f"{presentationml_prefix}.tags+xml"
     VIEW_PROPS = f"{presentationml_prefix}.viewProps+xml"
-
-class Theme(StrEnum):
-    """Theme content types."""
     THEME = f"{office_prefix}.theme+xml"

@@ -25,14 +25,14 @@ class XmlPart(Part):
         self.data: XmlElement | None = None
         self.docinfo: 'etree.DocInfo' | None = None
 
-    def get_attribute(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
+    def get_element(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
         if self.data:
-            return self.data.get_attribute(name, prefix)
+            return self.data.get_element(name, prefix)
         return None
 
-    def get_attributes(self, name: str, prefix: str | None = None) -> list['XmlElement']:
+    def get_elements(self, name: str, prefix: str | None = None) -> list['XmlElement']:
         if self.data:
-            return self.data.get_attributes(name, prefix)
+            return self.data.get_elements(name, prefix)
         return []
 
     def _to_file(self, writer: '_OOXMLWriter'):

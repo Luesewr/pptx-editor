@@ -4,17 +4,19 @@ from abc import ABC, abstractmethod
 from itertools import chain
 from typing import TypeGuard
 
+from pptx_editor.find import FindResult
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.find import FindResult
+from pptx_editor.xml_elements.fill import Fill
 
 class TextBody(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+    default_prefix = 'p'
     default_name = 'txBody'
 
     @property
     def paragraphs(self) -> list['Paragraph']:
-        attributes = self.get_attributes('p', 'a')
+        attributes = self.get_elements('p', 'a')
 
         if not self._is_paragraphs_valid(attributes):
             raise PowerpointIntegrityError('All paragraph attributes must be of type Paragraph.')
@@ -31,6 +33,7 @@ class TextBody(XmlElement):
 
 class Paragraph(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
     default_name = 'p'
 
     @property
@@ -89,6 +92,7 @@ class Paragraph(XmlElement):
 
             for dependent_match in dependent_matches:
                 dependent_match.dependent_results.append(find_result)
+                find_result.is_dependent = True
 
             dependent_matches.append(find_result)
 
@@ -96,18 +100,31 @@ class Paragraph(XmlElement):
 
 
 class ParagraphContent(XmlElement, ABC):
+    is_abstract = True
+
     @property
     @abstractmethod
     def content_text(self) -> str:
         pass
 
+
+    @property
+    def properties(self) -> 'RunProperties | None':
+        return self.get_element('rPr', 'a')
+
+    def __init_subclass__(cls, **kwargs):
+        cls.is_abstract = False
+        super().__init_subclass__(**kwargs)
+
+
 class Run(ParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
     default_name = 'r'
 
     @property
     def content_text(self) -> str:
-        text_attribute = self.get_attribute('t', 'a')
+        text_attribute = self.get_element('t', 'a')
 
         if text_attribute is None:
             raise PowerpointIntegrityError('The run element is missing the required t element.')
@@ -119,7 +136,7 @@ class Run(ParagraphContent):
 
     @content_text.setter
     def content_text(self, value: str) -> None:
-        text_attribute = self.get_attribute('t', 'a')
+        text_attribute = self.get_element('t', 'a')
 
         if text_attribute is None:
             raise PowerpointIntegrityError('The run element is missing the required t element.')
@@ -132,13 +149,29 @@ class Run(ParagraphContent):
 
 class Text(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
     default_name = 't'
 
 
 class Break(ParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
     default_name = 'br'
 
     @property
     def content_text(self) -> str:
         return '\n'
+
+
+class RunProperties(XmlElement):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 'rPr'
+
+    @property
+    def fill(self) -> 'Fill | None':
+        for child in self.children:
+            if isinstance(child, Fill):
+                return child
+
+        return None
