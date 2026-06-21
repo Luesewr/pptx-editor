@@ -70,14 +70,14 @@ class XmlElement:
         if old_element not in self.children:
             raise ValueError('Old element is not a child of this element.')
 
-        index = self.children.index(old_element)
+        index = next(i for i, obj in enumerate(self.children) if obj is old_element)
         self.children = tuple(chain(self.children[:index], (new_element,), self.children[index + 1:]))
 
     def remove_element(self, element: 'XmlElement') -> None:
         if element not in self.children:
             raise ValueError('Element is not a child of this element.')
 
-        index = self.children.index(element)
+        index = next(i for i, obj in enumerate(self.children) if obj is element)
         self.children = tuple(chain(self.children[:index], self.children[index + 1:]))
 
     def add_element(self, element: 'XmlElement') -> None:
@@ -102,14 +102,14 @@ class XmlElement:
         if reference_element not in self.children:
             raise ValueError('Reference element is not a child of this element.')
 
-        index = self.children.index(reference_element)
+        index = next(i for i, obj in enumerate(self.children) if obj is reference_element)
         self.children = tuple(chain(self.children[:index], (new_element,), self.children[index:]))
 
     def insert_element_after(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         if reference_element not in self.children:
             raise ValueError('Reference element is not a child of this element.')
 
-        index = self.children.index(reference_element)
+        index = next(i for i, obj in enumerate(self.children) if obj is reference_element)
         self.children = tuple(chain(self.children[:index + 1], (new_element,), self.children[index + 1:]))
 
     @classmethod

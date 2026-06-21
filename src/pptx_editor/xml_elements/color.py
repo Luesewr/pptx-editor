@@ -43,7 +43,7 @@ class Color(XmlElement, ABC):
 
     @classmethod
     @abstractmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         pass
 
     def __init_subclass__(cls, **kwargs):
@@ -81,7 +81,7 @@ class HslColor(Color):
         return r, g, b
 
     @classmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         r /= 255
         g /= 255
         b /= 255
@@ -104,9 +104,9 @@ class HslColor(Color):
             h /= 6
 
         attributes = (
-            Attribute('a', 'hue', str(int(h * 360))),
-            Attribute('a', 'sat', str(int(s * 100))),
-            Attribute('a', 'lum', str(int(l * 100)))
+            Attribute('hue', str(int(h * 360))),
+            Attribute('sat', str(int(s * 100))),
+            Attribute('lum', str(int(l * 100)))
         )
 
         return cls(attributes=attributes, part=part)
@@ -125,30 +125,32 @@ class PresetColor(Color):
 
         val = val_attribute.value
 
-        if val not in ST_PresetColorVal_lookup:
+        if val not in ST_PresetColorVal.__members__:
             raise PowerpointIntegrityError(f'Invalid preset color value: {val}')
+
+        val = ST_PresetColorVal(val)
 
         r, g, b = ST_PresetColorVal_lookup[val]
         return r, g, b
 
     @classmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         for val, (pr, pg, pb) in ST_PresetColorVal_lookup.items():
             if (r, g, b) == (pr, pg, pb):
-                attributes = (Attribute('a', 'val', val),)
+                attributes = (Attribute('val', val.value),)
                 return cls(attributes=attributes, part=part)
 
         raise ValueError(f'No preset color matches the RGB value ({r}, {g}, {b})')
 
     @classmethod
-    def from_preset_color_val(cls, val: str | ST_PresetColorVal, part: 'XmlPart | None' = None) -> Self:
+    def from_name(cls, val: str | ST_PresetColorVal, part: 'XmlPart | None' = None) -> Self:
         if not isinstance(val, ST_PresetColorVal):
             if val not in ST_PresetColorVal.__members__:
                 raise ValueError(f'Invalid preset color value: {val}')
 
             val = ST_PresetColorVal(val)
 
-        attributes = (Attribute(None, 'val', val.value),)
+        attributes = (Attribute('val', val.value),)
         return cls(attributes=attributes, part=part)
 
 
@@ -183,7 +185,10 @@ class SchemeColor(Color):
         return theme.get_color(color_value).as_rgb()
 
     @classmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
+        if part is None:
+            raise PowerpointIntegrityError('SchemeColor class requires a part to resolve the scheme color value.')
+
         if not hasattr(part, 'color_map'):
             raise PowerpointIntegrityError('SchemeColor class does not have a color map to resolve the scheme color value.')
 
@@ -196,7 +201,7 @@ class SchemeColor(Color):
 
         for name, color_value in color_map.items():
             if theme.get_color(color_value).as_rgb() == (r, g, b):
-                attributes = (Attribute('a', 'val', name),)
+                attributes = (Attribute('val', name),)
                 return cls(attributes=attributes, part=part)
 
         raise ValueError(f'No scheme color matches the RGB value ({r}, {g}, {b})')
@@ -222,11 +227,11 @@ class RgbColorModelPercentage(Color):
         return r, g, b
 
     @classmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         attributes = (
-            Attribute('a', 'r', str(int(r * 100000 / 255))),
-            Attribute('a', 'g', str(int(g * 100000 / 255))),
-            Attribute('a', 'b', str(int(b * 100000 / 255))),
+            Attribute('r', str(int(r * 100000 / 255))),
+            Attribute('g', str(int(g * 100000 / 255))),
+            Attribute('b', str(int(b * 100000 / 255))),
         )
 
         return cls(attributes=attributes, part=part)
@@ -255,9 +260,9 @@ class RgbColorModelHex(Color):
         return r, g, b
 
     @classmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         val = f'{r:02X}{g:02X}{b:02X}'
-        attributes = (Attribute('a', 'val', val),)
+        attributes = (Attribute('val', val),)
         return cls(attributes=attributes, part=part)
 
 
@@ -270,7 +275,7 @@ class SystemColor(Color):
         raise NotImplementedError('SystemColor does not support conversion to RGB since it depends on the system color scheme.')
 
     @classmethod
-    def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
+    def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         raise NotImplementedError('SystemColor does not support creation from RGB since it depends on the system color scheme.')
 
 

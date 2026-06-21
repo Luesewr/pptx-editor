@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class RelationshipAttribute(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
-    def __init__(self, prefix: str | None, name: str, value: str):
+    def __init__(self, name: str, value: str, prefix: str | None = None):
         self.prefix = prefix if prefix else None
         self.name = sys.intern(name)
         self.value: 'str | Relationship' = sys.intern(value)
@@ -26,7 +26,7 @@ class RelationshipAttribute(Attribute):
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
-        relation_value = cls(prefix, q.localname, value)
+        relation_value = cls(q.localname, value, prefix)
 
         relation_value._resolve_target(parser, file_path)
 

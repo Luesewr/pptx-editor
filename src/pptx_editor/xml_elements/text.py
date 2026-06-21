@@ -112,6 +112,22 @@ class ParagraphContent(XmlElement, ABC):
     def properties(self) -> 'RunProperties | None':
         return self.get_element('rPr', 'a')
 
+    @properties.setter
+    def properties(self, value: 'RunProperties | None') -> None:
+        existing_properties = self.properties
+
+        if value is not None and value.part is not self.part:
+            value = value.copy()
+            value.part = self.part
+
+        if existing_properties is not None:
+            if value is not None:
+                self.replace_element(existing_properties, value)
+            else:
+                self.remove_element(existing_properties)
+        elif value is not None:
+            self.children = tuple(chain(self.children, (value,)))
+
     def __init_subclass__(cls, **kwargs):
         cls.is_abstract = False
         super().__init_subclass__(**kwargs)
@@ -175,3 +191,19 @@ class RunProperties(XmlElement):
                 return child
 
         return None
+
+    @fill.setter
+    def fill(self, value: 'Fill | None') -> None:
+        existing_fill = self.fill
+
+        if value is not None and value.part is not self.part:
+            value = value.copy()
+            value.part = self.part
+
+        if existing_fill is not None:
+            if value is not None:
+                self.replace_element(existing_fill, value)
+            else:
+                self.remove_element(existing_fill)
+        elif value is not None:
+            self.children = tuple(chain(self.children, (value,)))
