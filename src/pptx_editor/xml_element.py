@@ -66,6 +66,23 @@ class XmlElement:
     def get_elements(self, name: str, prefix: str | None = None) -> list['XmlElement']:
         return [element for element in self.children if element.name == name and element.prefix == prefix]
 
+    def replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement') -> None:
+        if old_element not in self.children:
+            raise ValueError('Old element is not a child of this element.')
+
+        index = self.children.index(old_element)
+        self.children = tuple(chain(self.children[:index], (new_element,), self.children[index + 1:]))
+
+    def remove_element(self, element: 'XmlElement') -> None:
+        if element not in self.children:
+            raise ValueError('Element is not a child of this element.')
+
+        index = self.children.index(element)
+        self.children = tuple(chain(self.children[:index], self.children[index + 1:]))
+
+    def add_element(self, element: 'XmlElement') -> None:
+        self.children = tuple(chain(self.children, (element,)))
+
     def get_attribute(self, name: str, prefix: str | None = None) -> 'Attribute | None':
         for value in self.attributes:
             if value.name == name and value.prefix == prefix:

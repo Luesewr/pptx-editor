@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Self
 from pptx_editor.parts.xml_part import XmlPart
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.attribute import Attribute
-from pptx_editor.enums.ST_PresetColorVal import ST_PresetColorVal
+from pptx_editor.enums.ST_PresetColorVal import ST_PresetColorVal, ST_PresetColorVal_lookup
 from pptx_editor.exceptions import PowerpointIntegrityError
 
 if TYPE_CHECKING:
@@ -125,20 +125,31 @@ class PresetColor(Color):
 
         val = val_attribute.value
 
-        if val not in ST_PresetColorVal:
+        if val not in ST_PresetColorVal_lookup:
             raise PowerpointIntegrityError(f'Invalid preset color value: {val}')
 
-        r, g, b = ST_PresetColorVal[val]
+        r, g, b = ST_PresetColorVal_lookup[val]
         return r, g, b
 
     @classmethod
     def from_rgb(cls, part: 'XmlPart', r: int, g: int, b: int) -> Self:
-        for val, (pr, pg, pb) in ST_PresetColorVal.items():
+        for val, (pr, pg, pb) in ST_PresetColorVal_lookup.items():
             if (r, g, b) == (pr, pg, pb):
                 attributes = (Attribute('a', 'val', val),)
                 return cls(attributes=attributes, part=part)
 
         raise ValueError(f'No preset color matches the RGB value ({r}, {g}, {b})')
+
+    @classmethod
+    def from_preset_color_val(cls, val: str | ST_PresetColorVal, part: 'XmlPart | None' = None) -> Self:
+        if not isinstance(val, ST_PresetColorVal):
+            if val not in ST_PresetColorVal.__members__:
+                raise ValueError(f'Invalid preset color value: {val}')
+
+            val = ST_PresetColorVal(val)
+
+        attributes = (Attribute(None, 'val', val.value),)
+        return cls(attributes=attributes, part=part)
 
 
 class SchemeColor(Color):
