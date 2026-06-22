@@ -72,6 +72,18 @@ class Attribute:
         if cls.__name__ not in class_exceptions:
             cls._register()
 
+    def __hash__(self):
+        return hash((self.name, self.value, self.prefix))
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        if self is other:
+            return True
+
+        return self.name == other.name and self.value == other.value and self.prefix == other.prefix
+
     def __str__(self):
         escaped_value = escape(self.value, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
         return f"{self.prefix}:{self.name}={escaped_value}" if self.prefix else f"{self.name}={escaped_value}"
