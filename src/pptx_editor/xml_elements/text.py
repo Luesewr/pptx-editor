@@ -5,7 +5,7 @@ from itertools import chain
 from typing import TypeGuard
 
 from pptx_editor.find import FindResult
-from pptx_editor.xml_element import XmlElement
+from pptx_editor.xml_element import XmlElement, XmlElementProperty
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.xml_elements.fill import Fill
 
@@ -99,34 +99,29 @@ class Paragraph(XmlElement):
         return results
 
 
+class RunProperties(XmlElement):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 'rPr'
+
+    fill: Fill = XmlElementProperty(Fill)
+
+
+class Text(XmlElement):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 't'
+
+
 class ParagraphContent(XmlElement, ABC):
     is_abstract = True
+
+    properties: RunProperties = XmlElementProperty(RunProperties)
 
     @property
     @abstractmethod
     def content_text(self) -> str:
         pass
-
-
-    @property
-    def properties(self) -> 'RunProperties | None':
-        return self.get_element('rPr', 'a')
-
-    @properties.setter
-    def properties(self, value: 'RunProperties | None') -> None:
-        existing_properties = self.properties
-
-        if value is not None and value.part is not self.part:
-            value = value.copy()
-            value.part = self.part
-
-        if existing_properties is not None:
-            if value is not None:
-                self.replace_element(existing_properties, value)
-            else:
-                self.remove_element(existing_properties)
-        elif value is not None:
-            self.children = tuple(chain(self.children, (value,)))
 
     def __init_subclass__(cls, **kwargs):
         cls.is_abstract = False
@@ -138,35 +133,7 @@ class Run(ParagraphContent):
     default_prefix = 'a'
     default_name = 'r'
 
-    @property
-    def content_text(self) -> str:
-        text_attribute = self.get_element('t', 'a')
-
-        if text_attribute is None:
-            raise PowerpointIntegrityError('The run element is missing the required t element.')
-
-        if not isinstance(text_attribute, Text):
-            raise PowerpointIntegrityError('The t element in the run element is not of the expected type.')
-
-        return text_attribute.text
-
-    @content_text.setter
-    def content_text(self, value: str) -> None:
-        text_attribute = self.get_element('t', 'a')
-
-        if text_attribute is None:
-            raise PowerpointIntegrityError('The run element is missing the required t element.')
-
-        if not isinstance(text_attribute, Text):
-            raise PowerpointIntegrityError('The t element in the run element is not of the expected type.')
-
-        text_attribute.text = value
-
-
-class Text(XmlElement):
-    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
-    default_prefix = 'a'
-    default_name = 't'
+    content_text: Text = XmlElementProperty(Text)
 
 
 class Break(ParagraphContent):
@@ -177,33 +144,3 @@ class Break(ParagraphContent):
     @property
     def content_text(self) -> str:
         return '\n'
-
-
-class RunProperties(XmlElement):
-    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
-    default_prefix = 'a'
-    default_name = 'rPr'
-
-    @property
-    def fill(self) -> 'Fill | None':
-        for child in self.children:
-            if isinstance(child, Fill):
-                return child
-
-        return None
-
-    @fill.setter
-    def fill(self, value: 'Fill | None') -> None:
-        existing_fill = self.fill
-
-        if value is not None and value.part is not self.part:
-            value = value.copy()
-            value.part = self.part
-
-        if existing_fill is not None:
-            if value is not None:
-                self.replace_element(existing_fill, value)
-            else:
-                self.remove_element(existing_fill)
-        elif value is not None:
-            self.children = tuple(chain(self.children, (value,)))

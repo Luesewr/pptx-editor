@@ -3,7 +3,7 @@ import sys
 from io import BytesIO
 from itertools import chain
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, Generic
 from xml.sax.saxutils import escape
 
 from lxml import etree
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter
     from pptx_editor.parts.xml_part import XmlPart
 
+T = TypeVar('T', bound='XmlElement')
+
 class XmlElementRegistry(metaclass=SingletonMeta):
     def __init__(self):
         self._registry = {}
@@ -27,6 +29,35 @@ class XmlElementRegistry(metaclass=SingletonMeta):
 
     def get_attribute_cls(self, namespace: str | None, name: str | None = None) -> type['XmlElement']:
         return self._registry.get((namespace, name), XmlElement)
+
+class XmlElementProperty(Generic[T]):
+    def __init__(self, element_type: type[T]):
+        self.element_type = element_type
+
+    def __get__(self, instance: T | None, owner: type[T]) -> T | None:
+        if instance is None:
+            return self
+
+        for child in instance.children:
+            if isinstance(child, self.element_type):
+                return child
+
+        return None
+
+    def __set__(self, instance: T, value: T | None) -> None:
+        existing_element = self.__get__(instance, type(instance))
+
+        if value is not None and value.part is not instance.part:
+            value = value.copy()
+            value.part = instance.part
+
+        if existing_element is not None:
+            if value is not None:
+                instance.replace_element(existing_element, value)
+            else:
+                instance.remove_element(existing_element)
+        elif value is not None:
+            instance.children = (*instance.children, value)
 
 class XmlElement:
     default_namespace: str | None = None
