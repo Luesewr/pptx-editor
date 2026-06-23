@@ -10,6 +10,7 @@ from lxml import etree
 
 from pptx_editor.attribute import Attribute, AttributeRegistry
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
+from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
@@ -31,21 +32,28 @@ class XmlElementRegistry(metaclass=SingletonMeta):
         return self._registry.get((namespace, name), XmlElement)
 
 class XmlElementProperty(Generic[T]):
-    def __init__(self, element_type: type[T]):
+    def __init__(self, element_type: type[T], nullable: bool = True):
         self.element_type = element_type
+        self.nullable = nullable
 
     def __get__(self, instance: T | None, owner: type[T]) -> T | None:
         if instance is None:
-            return self
+            raise AttributeError("XmlElementProperty can only be accessed from an instance.")
 
         for child in instance.children:
             if isinstance(child, self.element_type):
                 return child
 
+        if not self.nullable:
+            raise PowerpointIntegrityError(f"Expected a child of type {self.element_type.__name__} in {instance.__class__.__name__}, but none was found.")
+
         return None
 
     def __set__(self, instance: T, value: T | None) -> None:
         existing_element = self.__get__(instance, type(instance))
+
+        if value is None and not self.nullable:
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable XmlElementProperty to None in {instance.__class__.__name__}.")
 
         if value is not None and value.part is not instance.part:
             value = value.copy()

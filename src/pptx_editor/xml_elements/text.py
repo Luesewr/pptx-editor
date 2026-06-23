@@ -104,7 +104,7 @@ class RunProperties(XmlElement):
     default_prefix = 'a'
     default_name = 'rPr'
 
-    fill: Fill = XmlElementProperty(Fill)
+    fill: Fill | None = XmlElementProperty(Fill)
 
 
 class Text(XmlElement):
@@ -116,7 +116,7 @@ class Text(XmlElement):
 class ParagraphContent(XmlElement, ABC):
     is_abstract = True
 
-    properties: RunProperties = XmlElementProperty(RunProperties)
+    properties: RunProperties | None = XmlElementProperty(RunProperties)
 
     @property
     @abstractmethod
@@ -133,7 +133,7 @@ class Run(ParagraphContent):
     default_prefix = 'a'
     default_name = 'r'
 
-    content_text: Text = XmlElementProperty(Text)
+    content_text: Text = XmlElementProperty(Text, nullable=False)
 
 
 class Break(ParagraphContent):

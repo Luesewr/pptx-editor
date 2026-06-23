@@ -45,4 +45,4 @@ class SolidFill(Fill):
     default_prefix = 'a'
     default_name = 'solidFill'
 
-    color: Color = XmlElementProperty(Color)
+    color: Color = XmlElementProperty(Color, nullable=False)
