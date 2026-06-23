@@ -133,7 +133,15 @@ class Run(ParagraphContent):
     default_prefix = 'a'
     default_name = 'r'
 
-    content_text: Text = XmlElementProperty(Text, nullable=False)
+    _content_text: Text = XmlElementProperty(Text, nullable=False)
+
+    @property
+    def content_text(self) -> str:
+        return self._content_text.text if self._content_text is not None else ''
+
+    @content_text.setter
+    def content_text(self, value: str) -> None:
+        self._content_text.text = value
 
 
 class Break(ParagraphContent):

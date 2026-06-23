@@ -36,7 +36,7 @@ class XmlElementProperty(Generic[T]):
         self.element_type = element_type
         self.nullable = nullable
 
-    def __get__(self, instance: T | None, owner: type[T]) -> T | None:
+    def __get__(self, instance: T | None, owner: type[T], nullable_override: bool | None = None) -> T | None:
         if instance is None:
             raise AttributeError("XmlElementProperty can only be accessed from an instance.")
 
@@ -44,13 +44,13 @@ class XmlElementProperty(Generic[T]):
             if isinstance(child, self.element_type):
                 return child
 
-        if not self.nullable:
+        if not self.nullable and not nullable_override:
             raise PowerpointIntegrityError(f"Expected a child of type {self.element_type.__name__} in {instance.__class__.__name__}, but none was found.")
 
         return None
 
     def __set__(self, instance: T, value: T | None) -> None:
-        existing_element = self.__get__(instance, type(instance))
+        existing_element = self.__get__(instance, type(instance), nullable_override=True)
 
         if value is None and not self.nullable:
             raise PowerpointIntegrityError(f"Cannot set a non-nullable XmlElementProperty to None in {instance.__class__.__name__}.")
