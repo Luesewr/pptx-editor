@@ -7,6 +7,7 @@ from typing import TypeGuard
 from pptx_editor.find import FindResult
 from pptx_editor.xml_element import XmlElement, XmlElementProperty
 from pptx_editor.exceptions import PowerpointIntegrityError
+from pptx_editor.xml_elements.color import Color
 from pptx_editor.xml_elements.fill import Fill
 
 class TextBody(XmlElement):
@@ -98,6 +99,12 @@ class Paragraph(XmlElement):
 
         return results
 
+class Highlight(XmlElement):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 'highlight'
+
+    color: Color = XmlElementProperty(Color, nullable=False)
 
 class RunProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
@@ -105,6 +112,7 @@ class RunProperties(XmlElement):
     default_name = 'rPr'
 
     fill: Fill | None = XmlElementProperty(Fill)
+    highlight: Highlight | None = XmlElementProperty(Highlight)
 
 
 class Text(XmlElement):

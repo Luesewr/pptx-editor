@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 class RelationshipAttribute(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
-    def __init__(self, name: str, value: str, prefix: str | None = None):
+    def __init__(self, name: str, value: 'str | Relationship', prefix: str | None = None):
         self.prefix = prefix if prefix else None
         self.name = sys.intern(name)
-        self.value: 'str | Relationship' = sys.intern(value)
+        self.value: 'str | Relationship' = sys.intern(value) if isinstance(value, str) else value
 
     @classmethod
     def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipAttribute':
