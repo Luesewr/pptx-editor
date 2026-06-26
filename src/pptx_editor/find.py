@@ -25,6 +25,7 @@ class NewlineMode(Enum):
 class CleanupMode(Enum):
     NONE = 1
     DELETE_EMPTY = 2
+    DELETE_FULL_EMPTY = 3
 
 
 class ReplaceOptions:
@@ -41,6 +42,7 @@ class FindResult:
         self.groups = groups
         self.paragraph = paragraph
         self.elements = elements
+        self._full_elements = elements.copy()
         self.start_offset = start_offset
         self.end_offset = end_offset
         self.dependent_results: list['FindResult'] = []
@@ -59,8 +61,7 @@ class FindResult:
         if not self.elements:
             return
 
-        last_element = self.elements[-1]
-        last_element_length = len(last_element.content_text)
+        last_element_length = self._last_element_length()
 
         if replace_options.merge_mode == MergeMode.LEFT_MERGE:
             self._replace_with_format_left_merge(format_text)
@@ -71,19 +72,19 @@ class FindResult:
         elif replace_options.merge_mode == MergeMode.DIVIDE:
             self._replace_with_format_divide(format_text)
 
-        self._recalculate_elements()
-
         if replace_options.newline_mode == NewlineMode.REPLACE:
             self._process_newlines()
-            self._recalculate_elements()
 
-        offset_change = len(last_element.content_text) - last_element_length
+        offset_change = self._last_element_length() - last_element_length
         self._shift_dependent_results(offset_change)
 
-        if replace_options.cleanup_mode == CleanupMode.DELETE_EMPTY:
-            self._cleanup_empty_elements()
+        if replace_options.cleanup_mode in (CleanupMode.DELETE_EMPTY, CleanupMode.DELETE_FULL_EMPTY):
+            self._cleanup_empty_elements(replace_options.cleanup_mode)
 
         self._replaced = True
+
+    def is_replaced(self) -> bool:
+        return self._replaced
 
     def _replace_with_format_left_merge(self, new_text: str) -> None:
         if not self.elements:
@@ -102,6 +103,8 @@ class FindResult:
         for element in self.elements[1:-1]:
             element.content_text = ''
 
+        self.elements = [first_element]
+
     def _replace_with_format_right_merge(self, new_text: str) -> None:
         if not self.elements:
             return
@@ -119,6 +122,8 @@ class FindResult:
         for element in self.elements[1:-1]:
             element.content_text = ''
 
+        self.elements = [last_element]
+
     def _replace_with_format_isolate(self, new_text: str, replace_options: 'ReplaceOptions') -> None:
         if not self.elements:
             return
@@ -130,6 +135,7 @@ class FindResult:
             first_element = first_element.copy()
             self.paragraph.insert_element_before(first_element, last_element)
             self.elements = [first_element, last_element]
+            self._full_elements = [first_element, last_element]
 
         first_element.content_text = first_element.content_text[:self.start_offset]
         last_element.content_text = last_element.content_text[self.end_offset:]
@@ -154,6 +160,9 @@ class FindResult:
         if replace_options.merge_mode in (MergeMode.ISOLATE_RIGHT,):
             self.paragraph.insert_element_before(new_element, last_element)
 
+        self._full_elements = self._recalculate_elements(first_element, last_element)
+        self.elements = [new_element]
+
     def _replace_with_format_divide(self, new_text: str) -> None:
         if not self.elements:
             return
@@ -173,17 +182,22 @@ class FindResult:
         for element, smooth_text in zip(self.elements[1:-1], smooth_texts[1:-1]):
             element.content_text = smooth_text
 
-    def _recalculate_elements(self) -> None:
-        first_element = self.elements[0]
-        last_element = self.elements[-1]
+    def _recalculate_elements(self, first_element: 'text.ParagraphContent', last_element: 'text.ParagraphContent') -> None:
+        first_element_index = next((i for i, obj in enumerate(self.paragraph.paragraph_elements) if obj is first_element), None)
+        last_element_index = next((i for i, obj in enumerate(self.paragraph.paragraph_elements) if obj is last_element), None)
 
-        first_element_index = self.paragraph.paragraph_elements.index(first_element)
-        last_element_index = self.paragraph.paragraph_elements.index(last_element)
+        if first_element_index is None or last_element_index is None:
+            raise ValueError('First or last element is not a child of the paragraph.')
 
-        self.elements = self.paragraph.paragraph_elements[first_element_index:last_element_index + 1]
+        return self.paragraph.paragraph_elements[first_element_index:last_element_index + 1]
 
     def _process_newlines(self) -> None:
         element_count = len(self.elements)
+
+        first_element = self.elements[0]
+        last_element = self.elements[-1]
+
+        shares_last_element = last_element is self._full_elements[-1] if self._full_elements else False
 
         for element_index, element in enumerate(self.elements):
             if isinstance(element, text.Run) and '\n' in element.content_text:
@@ -199,23 +213,47 @@ class FindResult:
                     element = new_element
 
                 if element_index == element_count - 1:
-                    self.elements.append(element)
+                    last_element = element
+
+        if shares_last_element:
+            self._full_elements = self._recalculate_elements(self._full_elements[0], last_element)
+        else:
+            self._full_elements = self._recalculate_elements(self._full_elements[0], self._full_elements[-1])
+
+        self.elements = self._recalculate_elements(first_element, last_element)
+
 
     def _shift_dependent_results(self, offset_change: int) -> None:
         for dependent_result in self.dependent_results:
-            dependent_result._shift_offsets(offset_change)
+            dependent_result.shift_offsets(offset_change)
 
-    def _cleanup_empty_elements(self) -> None:
-        start_index = 1 if self.is_dependent else 0
-        end_index = len(self.elements) - 1 if len(self.dependent_results) > 0 else len(self.elements)
-        empty_elements = [element for element in self.elements[start_index:end_index] if element.content_text == '']
-        self.paragraph.children = [child for child in self.paragraph.children if child not in empty_elements]
+    def _cleanup_empty_elements(self, cleanup_mode: CleanupMode) -> None:
+        elements = self.elements if cleanup_mode == CleanupMode.DELETE_EMPTY else self._full_elements
 
-    def _shift_offsets(self, offset_change: int) -> None:
+        start_index = 1 if self.is_dependent and elements[0] is self._full_elements[0] else 0
+        active_dependent_results = [result for result in self.dependent_results if not result.is_replaced()]
+        end_index = len(elements) - 1 if len(active_dependent_results) > 0 and elements[-1] is self._full_elements[-1] else len(elements)
+        empty_elements_ids = [id(element) for element in elements[start_index:end_index] if element.content_text == '']
+
+        self.paragraph.children = [child for child in self.paragraph.children if id(child) not in empty_elements_ids]
+        self.elements = [element for element in self.elements if id(element) not in empty_elements_ids]
+        self._full_elements = [element for element in self._full_elements if id(element) not in empty_elements_ids]
+
+    def shift_offsets(self, offset_change: int) -> None:
+        if self._replaced:
+            return
+
         self.start_offset += offset_change
 
-        if len(self.elements) == 1:
+        if len(self._full_elements) == 1:
             self.end_offset += offset_change
+
+    def _last_element_length(self) -> int:
+        if not self._full_elements:
+            return 0
+
+        last_element = self._full_elements[-1]
+        return len(last_element.content_text)
 
 
 def _split_smooth(text, n):

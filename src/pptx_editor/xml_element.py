@@ -106,18 +106,12 @@ class XmlElement:
         return [element for element in self.children if element.name == name and element.prefix == prefix]
 
     def replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement') -> None:
-        index = next((i for i, obj in enumerate(self.children) if obj is old_element), None)
-
-        if index is None:
-            raise ValueError('Old element is not a child of this element.')
+        index = self.index_of_element(old_element)
 
         self.children = tuple(chain(self.children[:index], (new_element,), self.children[index + 1:]))
 
     def remove_element(self, element: 'XmlElement') -> None:
-        index = next((i for i, obj in enumerate(self.children) if obj is element), None)
-
-        if index is None:
-            raise ValueError('Element is not a child of this element.')
+        index = self.index_of_element(element)
 
         self.children = tuple(chain(self.children[:index], self.children[index + 1:]))
 
@@ -140,20 +134,22 @@ class XmlElement:
         return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, self.part, self.namespaces.copy() if self.namespaces is not None else None)
 
     def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
-        index = next((i for i, obj in enumerate(self.children) if obj is reference_element), None)
-
-        if index is None:
-            raise ValueError('Reference element is not a child of this element.')
+        index = self.index_of_element(reference_element)
 
         self.children = tuple(chain(self.children[:index], (new_element,), self.children[index:]))
 
     def insert_element_after(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
-        index = next((i for i, obj in enumerate(self.children) if obj is reference_element), None)
-
-        if index is None:
-            raise ValueError('Reference element is not a child of this element.')
+        index = self.index_of_element(reference_element)
 
         self.children = tuple(chain(self.children[:index + 1], (new_element,), self.children[index + 1:]))
+
+    def index_of_element(self, element: 'XmlElement') -> int:
+        index = next((i for i, obj in enumerate(self.children) if obj is element), None)
+
+        if index is None:
+            raise ValueError('Element is not a child of this element.')
+
+        return index
 
     @classmethod
     def _from_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
