@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import cast
 
 import pptx_editor.xml_elements.text as text
 
@@ -149,7 +150,7 @@ class FindResult:
             new_element = last_element.copy()
         elif replace_options.style_inherit_mode == StyleInheritMode.FROM_NONE:
             new_text_element = text.Text(part=self.paragraph.part)
-            new_element = text.Run(children=(new_text_element,), part=self.paragraph.part)
+            new_element = cast(text.ParagraphContent, text.Run(children=(new_text_element,), part=self.paragraph.part))
         else:
             raise ValueError('Invalid style inherit mode.')
 
@@ -160,7 +161,7 @@ class FindResult:
         if replace_options.merge_mode in (MergeMode.ISOLATE_RIGHT,):
             self.paragraph.insert_element_before(new_element, last_element)
 
-        self._full_elements = self._recalculate_elements(first_element, last_element)
+        self._full_elements = self._recalculate_elements(self._full_elements[0], self._full_elements[-1])
         self.elements = [new_element]
 
     def _replace_with_format_divide(self, new_text: str) -> None:
@@ -182,7 +183,7 @@ class FindResult:
         for element, smooth_text in zip(self.elements[1:-1], smooth_texts[1:-1]):
             element.content_text = smooth_text
 
-    def _recalculate_elements(self, first_element: 'text.ParagraphContent', last_element: 'text.ParagraphContent') -> None:
+    def _recalculate_elements(self, first_element: 'text.ParagraphContent', last_element: 'text.ParagraphContent') -> list['text.ParagraphContent']:
         first_element_index = next((i for i, obj in enumerate(self.paragraph.paragraph_elements) if obj is first_element), None)
         last_element_index = next((i for i, obj in enumerate(self.paragraph.paragraph_elements) if obj is last_element), None)
 
@@ -197,7 +198,7 @@ class FindResult:
         first_element = self.elements[0]
         last_element = self.elements[-1]
 
-        shares_last_element = last_element is self._full_elements[-1] if self._full_elements else False
+        shares_last_element = last_element is self._full_elements[-1]
 
         for element_index, element in enumerate(self.elements):
             if isinstance(element, text.Run) and '\n' in element.content_text:
