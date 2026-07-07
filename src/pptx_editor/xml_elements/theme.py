@@ -1,6 +1,6 @@
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.xml_element import XmlElement
-from pptx_editor.xml_elements.color import Color
+from pptx_editor.xml_elements.color import AbstractColor
 
 
 class ThemeElements(XmlElement):
@@ -26,5 +26,5 @@ class ColorScheme(XmlElement):
     default_name = 'clrScheme'
 
     @property
-    def colors(self) -> dict[str, Color]:
-        return {element.name: element.children[0] for element in self.children if element.children and isinstance(element.children[0], Color)}
+    def colors(self) -> dict[str, AbstractColor]:
+        return {element.name: element.children[0] for element in self.children if element.children and isinstance(element.children[0], AbstractColor)}

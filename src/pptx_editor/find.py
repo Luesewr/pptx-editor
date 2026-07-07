@@ -38,7 +38,7 @@ class ReplaceOptions:
 
 
 class FindResult:
-    def __init__(self, result: str, groups: tuple[str, ...], paragraph: 'text.Paragraph', elements: list['text.ParagraphContent'], start_offset: int, end_offset: int):
+    def __init__(self, result: str, groups: tuple[str, ...], paragraph: 'text.Paragraph', elements: list['text.AbstractParagraphContent'], start_offset: int, end_offset: int):
         self.result = result
         self.groups = groups
         self.paragraph = paragraph
@@ -150,7 +150,7 @@ class FindResult:
             new_element = last_element.copy()
         elif replace_options.style_inherit_mode == StyleInheritMode.FROM_NONE:
             new_text_element = text.Text(part=self.paragraph.part)
-            new_element = cast(text.ParagraphContent, text.Run(children=(new_text_element,), part=self.paragraph.part))
+            new_element = cast(text.AbstractParagraphContent, text.Run(children=(new_text_element,), part=self.paragraph.part))
         else:
             raise ValueError('Invalid style inherit mode.')
 
@@ -183,7 +183,7 @@ class FindResult:
         for element, smooth_text in zip(self.elements[1:-1], smooth_texts[1:-1]):
             element.content_text = smooth_text
 
-    def _recalculate_elements(self, first_element: 'text.ParagraphContent', last_element: 'text.ParagraphContent') -> list['text.ParagraphContent']:
+    def _recalculate_elements(self, first_element: 'text.AbstractParagraphContent', last_element: 'text.AbstractParagraphContent') -> list['text.AbstractParagraphContent']:
         first_element_index = next((i for i, obj in enumerate(self.paragraph.paragraph_elements) if obj is first_element), None)
         last_element_index = next((i for i, obj in enumerate(self.paragraph.paragraph_elements) if obj is last_element), None)
 

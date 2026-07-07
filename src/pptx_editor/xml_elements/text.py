@@ -3,13 +3,12 @@ import re
 from abc import ABC, abstractmethod
 from typing import TypeGuard
 
-from pptx_editor.attribute import AttributeStringProperty
-from pptx_editor.attributes.text import Typeface
 from pptx_editor.find import FindResult
 from pptx_editor.xml_element import XmlElement, XmlElementProperty
 from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.xml_elements.color import Color
-from pptx_editor.xml_elements.fill import Fill
+from pptx_editor.xml_elements.color import AbstractColor
+from pptx_editor.xml_elements.fill import AbstractFill
+from pptx_editor.xml_elements.font import LatinFont, ComplexScriptFont, EastAsianFont, SymbolFont
 
 class TextBody(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
@@ -43,8 +42,8 @@ class Paragraph(XmlElement):
         return [element for element in self.children if isinstance(element, Run)]
 
     @property
-    def paragraph_elements(self) -> list['ParagraphContent']:
-        return [element for element in self.children if isinstance(element, ParagraphContent)]
+    def paragraph_elements(self) -> list['AbstractParagraphContent']:
+        return [element for element in self.children if isinstance(element, AbstractParagraphContent)]
 
     @property
     def paragraph_text(self) -> str:
@@ -105,23 +104,19 @@ class Highlight(XmlElement):
     default_prefix = 'a'
     default_name = 'highlight'
 
-    color: Color = XmlElementProperty(Color, nullable=False)
-
-class LatinFont(XmlElement):
-    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
-    default_prefix = 'a'
-    default_name = 'latin'
-
-    typeface: str = AttributeStringProperty(Typeface, nullable=False)
+    color: AbstractColor = XmlElementProperty(AbstractColor, nullable=False)
 
 class RunProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'rPr'
 
-    fill: Fill | None = XmlElementProperty(Fill)
+    fill: AbstractFill | None = XmlElementProperty(AbstractFill)
     highlight: Highlight | None = XmlElementProperty(Highlight)
     latin_font: LatinFont | None = XmlElementProperty(LatinFont)
+    complex_script_font: ComplexScriptFont | None = XmlElementProperty(ComplexScriptFont)
+    east_asian_font: EastAsianFont | None = XmlElementProperty(EastAsianFont)
+    symbol_font: SymbolFont | None = XmlElementProperty(SymbolFont)
 
 
 class Text(XmlElement):
@@ -130,7 +125,7 @@ class Text(XmlElement):
     default_name = 't'
 
 
-class ParagraphContent(XmlElement, ABC):
+class AbstractParagraphContent(XmlElement, ABC):
     is_abstract = True
 
     properties: RunProperties | None = XmlElementProperty(RunProperties)
@@ -145,7 +140,7 @@ class ParagraphContent(XmlElement, ABC):
         super().__init_subclass__(**kwargs)
 
 
-class Run(ParagraphContent):
+class Run(AbstractParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'r'
@@ -161,7 +156,7 @@ class Run(ParagraphContent):
         self._content_text.text = value
 
 
-class Break(ParagraphContent):
+class Break(AbstractParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'br'

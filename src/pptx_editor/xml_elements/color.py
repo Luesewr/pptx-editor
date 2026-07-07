@@ -34,7 +34,7 @@ class MasterColorMapping(ColorMap):
     default_prefix = 'a'
     default_name = 'masterClrMapping'
 
-class Color(XmlElement, ABC):
+class AbstractColor(XmlElement, ABC):
     is_abstract = True
 
     @abstractmethod
@@ -51,7 +51,7 @@ class Color(XmlElement, ABC):
         super().__init_subclass__(**kwargs)
 
 
-class HslColor(Color):
+class HslColor(AbstractColor):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'hslClr'
@@ -112,7 +112,7 @@ class HslColor(Color):
         return cls(attributes=attributes, part=part)
 
 
-class PresetColor(Color):
+class PresetColor(AbstractColor):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'prstClr'
@@ -154,7 +154,7 @@ class PresetColor(Color):
         return cls(attributes=attributes, part=part)
 
 
-class SchemeColor(Color):
+class SchemeColor(AbstractColor):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'schemeClr'
@@ -207,7 +207,7 @@ class SchemeColor(Color):
         raise ValueError(f'No scheme color matches the RGB value ({r}, {g}, {b})')
 
 
-class RgbColorModelPercentage(Color):
+class RgbColorModelPercentage(AbstractColor):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'scrgbClr'
@@ -237,7 +237,7 @@ class RgbColorModelPercentage(Color):
         return cls(attributes=attributes, part=part)
 
 
-class RgbColorModelHex(Color):
+class RgbColorModelHex(AbstractColor):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'srgbClr'
@@ -266,7 +266,7 @@ class RgbColorModelHex(Color):
         return cls(attributes=attributes, part=part)
 
 
-class SystemColor(Color):
+class SystemColor(AbstractColor):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'sysClr'

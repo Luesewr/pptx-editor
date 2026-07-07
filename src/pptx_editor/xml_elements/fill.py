@@ -1,8 +1,8 @@
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.xml_element import XmlElement, XmlElementProperty
-from pptx_editor.xml_elements.color import Color
+from pptx_editor.xml_elements.color import AbstractColor
 
-class Fill(XmlElement):
+class AbstractFill(XmlElement):
     is_abstract = True
 
     def __init_subclass__(cls, **kwargs):
@@ -10,39 +10,39 @@ class Fill(XmlElement):
         super().__init_subclass__(**kwargs)
 
 
-class NoFill(Fill):
+class NoFill(AbstractFill):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'noFill'
 
 
-class BlipFill(Fill):
+class BlipFill(AbstractFill):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'blipFill'
 
 
-class GradientFill(Fill):
+class GradientFill(AbstractFill):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'gradFill'
 
 
-class GroupFill(Fill):
+class GroupFill(AbstractFill):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'grpFill'
 
 
-class PatternFill(Fill):
+class PatternFill(AbstractFill):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'pattFill'
 
 
-class SolidFill(Fill):
+class SolidFill(AbstractFill):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'solidFill'
 
-    color: Color = XmlElementProperty(Color, nullable=False)
+    color: AbstractColor = XmlElementProperty(AbstractColor, nullable=False)

@@ -6,7 +6,7 @@ from pptx_editor.parts.xml_part import XmlPart
 from pptx_editor.parts.theme import Theme
 from pptx_editor.xml_elements.color import ColorMap
 
-class Master(XmlPart):
+class AbstractMaster(XmlPart):
     """Base class for SlideMaster and NotesMaster."""
     is_abstract = True
 
@@ -39,13 +39,13 @@ class Master(XmlPart):
         cls.is_abstract = False
         super().__init_subclass__(**kwargs)
 
-class NotesMaster(Master):
+class NotesMaster(AbstractMaster):
     """Represents a NotesMaster part in a PowerPoint presentation."""
     default_content_type = PresentationML.NOTES_MASTER
     default_base_path = PurePosixPath('/ppt/notesMasters')
     default_part_name = 'notesMaster{i}.xml'
 
-class SlideMaster(Master):
+class SlideMaster(AbstractMaster):
     """Represents a SlideMaster part in a PowerPoint presentation."""
     default_content_type = PresentationML.SLIDE_MASTER
     default_base_path = PurePosixPath('/ppt/slideMasters')
