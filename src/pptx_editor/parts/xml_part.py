@@ -83,7 +83,7 @@ class XmlPart(Part):
         file_xml, ns_declarations = self._get_file_xml(parser, file_path)
 
         if file_xml is not None:
-            self.data = parser.element_from_xml(file_path, file_xml, ns_declarations)
+            self.data = parser.parse_element_from_xml(file_path, file_xml, ns_declarations)
             self.docinfo = file_xml.getroottree().docinfo
         else:
             self.data = None

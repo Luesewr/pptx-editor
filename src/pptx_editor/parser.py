@@ -39,13 +39,32 @@ class _OOXMLParser:
 
         return return_part
 
-    def parse_part(self, file_path: PurePosixPath):
+    def parse_part_from_file(self, file_path: PurePosixPath):
         content_type, is_default = self.get_content_type(file_path)
 
         part_cls = PartRegistry().get_part_cls(content_type)
         part = part_cls._from_file(self, file_path, content_type, is_default)
 
         return part
+
+    def parse_element_from_xml(self, file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str | None, str]) -> 'XmlElement':
+        registry = XmlElementRegistry()
+        q = etree.QName(xml)
+        namespace = q.namespace if q.namespace else None
+        name = q.localname
+
+        element_cls = registry.get_element_cls(namespace, name)
+        element = element_cls._from_xml(self, file_path, xml, ns_declarations)
+        return element
+
+    def parse_attribute_from_item(self, file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str):
+        registry = AttributeRegistry()
+        q = etree.QName(name)
+        namespace = q.namespace if q.namespace else None
+        attribute_cls = registry.get_attribute_value_cls(namespace, name)
+        attribute_value = attribute_cls._from_item(self, file_path, namespaces, name, value)
+
+        return attribute_value
 
     def get_content_type(self, file_path: PurePosixPath) -> tuple[str, bool]:
         if self.content_types is None:
@@ -62,25 +81,6 @@ class _OOXMLParser:
             return default_content_type, True
 
         raise PowerpointIntegrityError(f"Integrity warning: No content type found for file {file_path}")
-
-    def element_from_xml(self, file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str | None, str]) -> 'XmlElement':
-        registry = XmlElementRegistry()
-        q = etree.QName(xml)
-        namespace = q.namespace if q.namespace else None
-        name = q.localname
-
-        element_cls = registry.get_element_cls(namespace, name)
-        element = element_cls._from_xml(self, file_path, xml, ns_declarations)
-        return element
-
-    def attribute_from_item(self, file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str):
-        registry = AttributeRegistry()
-        q = etree.QName(name)
-        namespace = q.namespace if q.namespace else None
-        attribute_cls = registry.get_attribute_value_cls(namespace, name)
-        attribute_value = attribute_cls._from_item(self, file_path, namespaces, name, value)
-
-        return attribute_value
 
     def read_file(self, file_path: PurePosixPath) -> bytes:
         if file_path.is_absolute():

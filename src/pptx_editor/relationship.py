@@ -67,7 +67,7 @@ class Relationship:
             return ExternalRelationship(target_type, raw_target_path, origin)
 
         target_path = cls._get_target_file_path(file_path, PurePosixPath(raw_target_path))
-        target = parser.parse_part(target_path)
+        target = parser.parse_part_from_file(target_path)
 
         if target is None:
             print(f"Integrity warning: Relationship target {target_path} could not be parsed")
