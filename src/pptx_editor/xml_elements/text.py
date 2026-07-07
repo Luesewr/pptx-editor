@@ -164,3 +164,18 @@ class Break(AbstractParagraphContent):
     @property
     def content_text(self) -> str:
         return '\n'
+
+class TextField(AbstractParagraphContent):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 'fld'
+
+    _content_text: Text = XmlElementProperty(Text, nullable=False)
+
+    @property
+    def content_text(self) -> str:
+        return self._content_text.text if self._content_text is not None else ''
+
+    @content_text.setter
+    def content_text(self, value: str) -> None:
+        self._content_text.text = value
