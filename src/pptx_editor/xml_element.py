@@ -198,7 +198,7 @@ class XmlElement:
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         prefix = xml.prefix or None
-        attributes = tuple(parser.parse_attribute_from_item(file_path, xml.nsmap, str(key), str(value)) for key, value in xml.attrib.items())
+        attributes = tuple(parser.parse_attribute_from_item(file_path, xml.nsmap, name, str(key), str(value)) for key, value in xml.attrib.items())
         children = tuple(parser.parse_element_from_xml(file_path, child, ns_declarations) for child in xml)
         text = sys.intern(xml.text) if xml.text is not None else xml.text
         tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail

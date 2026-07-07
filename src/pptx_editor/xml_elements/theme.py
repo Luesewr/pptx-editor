@@ -11,7 +11,7 @@ class ThemeElements(XmlElement):
 
     @property
     def color_scheme(self) -> 'ColorScheme':
-        color_scheme = self.get_element('clrScheme', 'a')
+        color_scheme = self.get_element_by_type(ColorScheme)
 
         if color_scheme is None:
             raise PowerpointIntegrityError("ThemeElements does not have an associated color scheme.")

@@ -57,11 +57,11 @@ class _OOXMLParser:
         element = element_cls._from_xml(self, file_path, xml, ns_declarations)
         return element
 
-    def parse_attribute_from_item(self, file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str):
+    def parse_attribute_from_item(self, file_path: PurePosixPath | None, namespaces: dict[str | None, str], element_name: str, name: str, value: str):
         registry = AttributeRegistry()
         q = etree.QName(name)
         namespace = q.namespace if q.namespace else None
-        attribute_cls = registry.get_attribute_value_cls(namespace, name)
+        attribute_cls = registry.get_attribute_value_cls(namespace, name, element_name)
         attribute_value = attribute_cls._from_item(self, file_path, namespaces, name, value)
 
         return attribute_value

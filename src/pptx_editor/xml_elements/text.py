@@ -3,9 +3,11 @@ import re
 from abc import ABC, abstractmethod
 from typing import TypeGuard
 
+from pptx_editor.attribute import BooleanAttributeProperty
+from pptx_editor.attributes.text import Bold
 from pptx_editor.find import FindResult
-from pptx_editor.xml_element import XmlElement, XmlElementProperty
 from pptx_editor.exceptions import PowerpointIntegrityError
+from pptx_editor.xml_element import XmlElement, XmlElementProperty
 from pptx_editor.xml_elements.color import AbstractColor
 from pptx_editor.xml_elements.fill import AbstractFill
 from pptx_editor.xml_elements.font import LatinFont, ComplexScriptFont, EastAsianFont, SymbolFont
@@ -17,7 +19,7 @@ class TextBody(XmlElement):
 
     @property
     def paragraphs(self) -> list['Paragraph']:
-        attributes = self.get_elements('p', 'a')
+        attributes = self.get_elements_by_type(Paragraph)
 
         if not self._is_paragraphs_valid(attributes):
             raise PowerpointIntegrityError('All paragraph attributes must be of type Paragraph.')
@@ -112,6 +114,7 @@ class RunProperties(XmlElement):
     default_name = 'rPr'
 
     fill: AbstractFill | None = XmlElementProperty(AbstractFill)
+    bold: bool | None = BooleanAttributeProperty(Bold)
     highlight: Highlight | None = XmlElementProperty(Highlight)
     latin_font: LatinFont | None = XmlElementProperty(LatinFont)
     complex_script_font: ComplexScriptFont | None = XmlElementProperty(ComplexScriptFont)

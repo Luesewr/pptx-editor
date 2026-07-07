@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Self
 
-from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.attributes.color import Hue, Saturation, Luminance, Red, Green, Blue
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.attribute import Attribute
 from pptx_editor.enums.ST_PresetColorVal import ST_PresetColorVal, ST_PresetColorVal_lookup
@@ -9,6 +9,7 @@ from pptx_editor.exceptions import PowerpointIntegrityError
 
 if TYPE_CHECKING:
     from pptx_editor.parts.theme import Theme
+    from pptx_editor.parts.xml_part import XmlPart
 
 class ColorMapOverride(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
@@ -57,9 +58,9 @@ class HslColor(AbstractColor):
     default_name = 'hslClr'
 
     def as_rgb(self) -> tuple[int, int, int]:
-        h_attribute = self.get_attribute('hue', 'a')
-        s_attribute = self.get_attribute('sat', 'a')
-        l_attribute = self.get_attribute('lum', 'a')
+        h_attribute = self.get_attribute_by_type(Hue)
+        s_attribute = self.get_attribute_by_type(Saturation)
+        l_attribute = self.get_attribute_by_type(Luminance)
 
         if h_attribute is None or s_attribute is None or l_attribute is None:
             raise PowerpointIntegrityError('The hslClr element is missing one or more required attributes.')
@@ -104,9 +105,9 @@ class HslColor(AbstractColor):
             h /= 6
 
         attributes = (
-            Attribute('hue', str(int(h * 360))),
-            Attribute('sat', str(int(s * 100))),
-            Attribute('lum', str(int(l * 100)))
+            Hue(str(int(h * 360))),
+            Saturation(str(int(s * 100))),
+            Luminance(str(int(l * 100)))
         )
 
         return cls(attributes=attributes, part=part)
@@ -213,9 +214,9 @@ class RgbColorModelPercentage(AbstractColor):
     default_name = 'scrgbClr'
 
     def as_rgb(self) -> tuple[int, int, int]:
-        r_attribute = self.get_attribute('r', 'a')
-        g_attribute = self.get_attribute('g', 'a')
-        b_attribute = self.get_attribute('b', 'a')
+        r_attribute = self.get_attribute_by_type(Red)
+        g_attribute = self.get_attribute_by_type(Green)
+        b_attribute = self.get_attribute_by_type(Blue)
 
         if r_attribute is None or g_attribute is None or b_attribute is None:
             raise PowerpointIntegrityError('The scrgbClr element is missing one or more required attributes.')
@@ -229,9 +230,9 @@ class RgbColorModelPercentage(AbstractColor):
     @classmethod
     def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         attributes = (
-            Attribute('r', str(int(r * 100000 / 255))),
-            Attribute('g', str(int(g * 100000 / 255))),
-            Attribute('b', str(int(b * 100000 / 255))),
+            Red(str(int(r * 100000 / 255))),
+            Green(str(int(g * 100000 / 255))),
+            Blue(str(int(b * 100000 / 255))),
         )
 
         return cls(attributes=attributes, part=part)

@@ -17,6 +17,7 @@ class RelationshipAttribute(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
     default_prefix = 'r'
     default_name = None
+    default_element_name = None
 
     def __init__(self, value: 'str | Relationship', prefix: str | None = None, name: str | None = None, overwrite_prefix: bool = False):
         self.prefix = prefix if prefix or overwrite_prefix else self.default_prefix

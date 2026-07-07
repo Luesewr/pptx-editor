@@ -21,11 +21,24 @@ class AttributeRegistry(metaclass=SingletonMeta):
     def __init__(self):
         self._registry = {}
 
-    def register(self, namespace: str, name: str, attribute_value_cls):
-        self._registry[(namespace, name)] = attribute_value_cls
+    def register(self, namespace: str, name: str, element_names: list[str] | None, attribute_value_cls):
+        if element_names is None:
+            self._registry[(namespace, name, None)] = attribute_value_cls
+        else:
+            for element_name in element_names:
+                self._registry[(namespace, name, element_name)] = attribute_value_cls
 
-    def get_attribute_value_cls(self, namespace: str | None, name: str) -> type['Attribute']:
-        return self._registry.get((namespace, name), self._registry.get((namespace, None), Attribute))
+    def get_attribute_value_cls(self, namespace: str | None, name: str, element_name: str | None = None) -> type['Attribute']:
+        return self._registry.get(
+            (namespace, name, element_name),
+            self._registry.get(
+                (namespace, name, None),
+                self._registry.get(
+                    (namespace, None, None),
+                    Attribute
+                )
+            )
+        )
 
 class AttributeProperty(Generic[T]):
     def __init__(self, attribute_type: type[T], nullable: bool = True):
@@ -84,10 +97,33 @@ class AttributeStringProperty(AttributeProperty[T]):
             attribute_instance = self.attribute_type(value)
             instance.add_attribute(attribute_instance)
 
+class BooleanAttributeProperty(AttributeProperty[T]):
+    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> bool | None:
+        attribute = super().__get__(instance, owner, nullable_override)
+        if attribute is not None:
+            return attribute.value == '1'
+        return None
+
+    def __set__(self, instance: 'XmlElement', value: bool | None) -> None:
+        existing_attribute = super().__get__(instance, type(instance), nullable_override=True)
+
+        if value is None and not self.nullable:
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable BooleanAttributeProperty to None in {instance.__class__.__name__}.")
+
+        if existing_attribute is not None:
+            if value is not None:
+                existing_attribute.value = '1' if value else '0'
+            else:
+                instance.remove_attribute(existing_attribute)
+        elif value is not None:
+            attribute_instance = self.attribute_type('1' if value else '0')
+            instance.add_attribute(attribute_instance)
+
 class Attribute:
     default_namespace: str | None = None
     default_prefix: str | None = None
     default_name: str | None = None
+    default_element_name: str | None = None
 
     __slots__ = ['name', 'value', 'prefix']
 
@@ -121,19 +157,25 @@ class Attribute:
     def _register(cls):
         registry = AttributeRegistry()
 
-        registry.register(cls.default_namespace, cls.default_name, cls)
+        registry.register(cls.default_namespace, cls.default_name, cls.default_element_name, cls)
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
         class_exceptions = []
         missing_namespace = not hasattr(cls, 'default_namespace')
+        missing_prefix = not hasattr(cls, 'default_prefix')
         missing_name = not hasattr(cls, 'default_name')
+        missing_element_name = not hasattr(cls, 'default_element_name')
 
         if cls.__name__ not in class_exceptions and missing_namespace:
             raise ValueError(f"Attribute subclass {cls.__name__} must define a default_namespace class attribute")
+        if cls.__name__ not in class_exceptions and missing_prefix:
+            raise ValueError(f"Attribute subclass {cls.__name__} must define a default_prefix class attribute")
         if cls.__name__ not in class_exceptions and missing_name:
             raise ValueError(f"Attribute subclass {cls.__name__} must define a default_name class attribute")
+        if cls.__name__ not in class_exceptions and missing_element_name:
+            raise ValueError(f"Attribute subclass {cls.__name__} must define a default_element_name class attribute")
 
         if cls.__name__ not in class_exceptions:
             cls._register()

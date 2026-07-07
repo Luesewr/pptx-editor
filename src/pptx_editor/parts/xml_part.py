@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from lxml import etree
 
 from pptx_editor.part import Part
-from pptx_editor.xml_element import XmlElement, XmlElementRegistry
+from pptx_editor.xml_element import XmlElement
 
 if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
