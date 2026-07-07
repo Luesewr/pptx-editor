@@ -3,11 +3,15 @@ from pathlib import PurePosixPath
 from zipfile import ZipFile
 from typing import IO
 
+from lxml import etree
+
 import pptx_editor.parts.package as package_part
+from pptx_editor.attribute import AttributeRegistry
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part, PartRegistry
 from pptx_editor.relationship import Relationship
+from pptx_editor.xml_element import XmlElement, XmlElementRegistry
 
 class _OOXMLParser:
     def __init__(self, file: IO, return_location: str = '/ppt/presentation.xml'):
@@ -58,6 +62,25 @@ class _OOXMLParser:
             return default_content_type, True
 
         raise PowerpointIntegrityError(f"Integrity warning: No content type found for file {file_path}")
+
+    def element_from_xml(self, file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str | None, str]) -> 'XmlElement':
+        registry = XmlElementRegistry()
+        q = etree.QName(xml)
+        namespace = q.namespace if q.namespace else None
+        name = q.localname
+
+        element_cls = registry.get_element_cls(namespace, name)
+        element = element_cls._from_xml(self, file_path, xml, ns_declarations)
+        return element
+
+    def attribute_from_item(self, file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str):
+        registry = AttributeRegistry()
+        q = etree.QName(name)
+        namespace = q.namespace if q.namespace else None
+        attribute_cls = registry.get_attribute_value_cls(namespace, name)
+        attribute_value = attribute_cls._from_item(self, file_path, namespaces, name, value)
+
+        return attribute_value
 
     def read_file(self, file_path: PurePosixPath) -> bytes:
         if file_path.is_absolute():

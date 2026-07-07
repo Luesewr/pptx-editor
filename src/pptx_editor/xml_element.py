@@ -25,10 +25,10 @@ class XmlElementRegistry(metaclass=SingletonMeta):
     def __init__(self):
         self._registry = {}
 
-    def register(self, namespace: str, name: str, attribute_cls):
-        self._registry[(namespace, name)] = attribute_cls
+    def register(self, namespace: str, name: str, element_cls: type['XmlElement']):
+        self._registry[(namespace, name)] = element_cls
 
-    def get_attribute_cls(self, namespace: str | None, name: str | None = None) -> type['XmlElement']:
+    def get_element_cls(self, namespace: str | None, name: str | None = None) -> type['XmlElement']:
         return self._registry.get((namespace, name), XmlElement)
 
 class XmlElementProperty(Generic[T]):
@@ -195,13 +195,11 @@ class XmlElement:
 
     @classmethod
     def _from_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
-        from pptx_editor.parts.xml_part import XmlPart
-
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         prefix = xml.prefix or None
-        attributes = tuple(cls._from_item(parser, file_path, xml.nsmap, str(key), str(value)) for key, value in xml.attrib.items())
-        children = tuple(XmlPart._parse_xml(parser, file_path, child, ns_declarations) for child in xml)
+        attributes = tuple(parser.attribute_from_item(file_path, xml.nsmap, str(key), str(value)) for key, value in xml.attrib.items())
+        children = tuple(parser.element_from_xml(file_path, child, ns_declarations) for child in xml)
         text = sys.intern(xml.text) if xml.text is not None else xml.text
         tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail
         part = parser.get_part(file_path) if file_path is not None else None
@@ -212,14 +210,6 @@ class XmlElement:
             defined_namespace = ns_declarations[xml_path].copy()
 
         return cls(name, prefix, attributes, children, text, tail, part=part, namespaces=defined_namespace)
-
-    @classmethod
-    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
-        registry = AttributeRegistry()
-        q = etree.QName(name)
-        namespace = sys.intern(q.namespace) if q.namespace else None
-        attribute_value_cls = registry.get_attribute_value_cls(namespace, q.localname)
-        return attribute_value_cls._from_item(parser, file_path, namespaces, name, value)
 
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         buffer.write('<'.encode('utf-8'))

@@ -83,20 +83,11 @@ class XmlPart(Part):
         file_xml, ns_declarations = self._get_file_xml(parser, file_path)
 
         if file_xml is not None:
-            self.data = self._parse_xml(parser, file_path, file_xml, ns_declarations)
+            self.data = parser.element_from_xml(file_path, file_xml, ns_declarations)
             self.docinfo = file_xml.getroottree().docinfo
         else:
             self.data = None
             self.docinfo = None
-
-    @classmethod
-    def _parse_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None):
-        registry = XmlElementRegistry()
-        q = etree.QName(xml.tag)
-        namespace = sys.intern(q.namespace) if q.namespace else None
-        name = sys.intern(q.localname)
-        attribute_cls = registry.get_attribute_cls(namespace, name)
-        return attribute_cls._from_xml(parser, file_path, xml, ns_declarations)
 
     def _get_file_xml(self, parser: '_OOXMLParser', file_path: PurePosixPath | None) -> tuple[etree._Element | None, dict[str, dict[str | None, str]] | None]:
         file_path = self._get_file_path() if file_path is None else file_path
