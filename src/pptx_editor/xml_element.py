@@ -1,15 +1,14 @@
 import sys
 
 from io import BytesIO
-from itertools import chain
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, TypeVar, Generic
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
-from pptx_editor.attribute import Attribute, AttributeRegistry
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
+from pptx_editor.attribute import Attribute, AttributeRegistry
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
     from pptx_editor.parts.xml_part import XmlPart
 
 T = TypeVar('T', bound='XmlElement')
+U = TypeVar('U', bound='Attribute')
 
 class XmlElementRegistry(metaclass=SingletonMeta):
     def __init__(self):
@@ -36,20 +36,21 @@ class XmlElementProperty(Generic[T]):
         self.element_type = element_type
         self.nullable = nullable
 
-    def __get__(self, instance: T | None, owner: type[T], nullable_override: bool | None = None) -> T | None:
+    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> T | None:
         if instance is None:
             raise AttributeError("XmlElementProperty can only be accessed from an instance.")
 
-        for child in instance.children:
-            if isinstance(child, self.element_type):
-                return child
+        child_element = instance.get_element_by_type(self.element_type)
+
+        if child_element is not None:
+            return child_element
 
         if not self.nullable and not nullable_override:
             raise PowerpointIntegrityError(f"Expected a child of type {self.element_type.__name__} in {instance.__class__.__name__}, but none was found.")
 
         return None
 
-    def __set__(self, instance: T, value: T | None) -> None:
+    def __set__(self, instance: 'XmlElement', value: T | None) -> None:
         existing_element = self.__get__(instance, type(instance), nullable_override=True)
 
         if value is None and not self.nullable:
@@ -65,7 +66,7 @@ class XmlElementProperty(Generic[T]):
             else:
                 instance.remove_element(existing_element)
         elif value is not None:
-            instance.children = (*instance.children, value)
+            instance.add_element(value)
 
 class XmlElement:
     default_namespace: str | None = None
@@ -102,21 +103,31 @@ class XmlElement:
 
         return None
 
+    def get_element_by_type(self, element_type: type[T]) -> 'T | None':
+        for element in self.children:
+            if isinstance(element, element_type):
+                return element
+
+        return None
+
     def get_elements(self, name: str, prefix: str | None = None) -> list['XmlElement']:
         return [element for element in self.children if element.name == name and element.prefix == prefix]
 
-    def replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement') -> None:
+    def get_elements_by_type(self, element_type: type[T]) -> list[T]:
+        return [element for element in self.children if isinstance(element, element_type)]
+
+    def add_element(self, element: 'XmlElement') -> None:
+        self.children = (*self.children, element)
+
+    def replace_element(self, old_element: T, new_element: T) -> None:
         index = self.index_of_element(old_element)
 
-        self.children = tuple(chain(self.children[:index], (new_element,), self.children[index + 1:]))
+        self.children = (*self.children[:index], new_element, *self.children[index + 1:])
 
     def remove_element(self, element: 'XmlElement') -> None:
         index = self.index_of_element(element)
 
-        self.children = tuple(chain(self.children[:index], self.children[index + 1:]))
-
-    def add_element(self, element: 'XmlElement') -> None:
-        self.children = tuple(chain(self.children, (element,)))
+        self.children = (*self.children[:index], *self.children[index + 1:])
 
     def get_attribute(self, name: str, prefix: str | None = None) -> 'Attribute | None':
         for value in self.attributes:
@@ -125,8 +136,31 @@ class XmlElement:
 
         return None
 
+    def get_attribute_by_type(self, attribute_type: type[U]) -> 'U | None':
+        for value in self.attributes:
+            if isinstance(value, attribute_type):
+                return value
+
+        return None
+
     def get_attributes(self, name: str, prefix: str | None = None) -> list['Attribute']:
         return [value for value in self.attributes if value.name == name and value.prefix == prefix]
+
+    def get_attributes_by_type(self, attribute_type: type[U]) -> list[U]:
+        return [value for value in self.attributes if isinstance(value, attribute_type)]
+
+    def add_attribute(self, attribute: 'Attribute') -> None:
+        self.attributes = (*self.attributes, attribute)
+
+    def replace_attribute(self, old_attribute: U, new_attribute: U) -> None:
+        index = self.index_of_attribute(old_attribute)
+
+        self.attributes = (*self.attributes[:index], new_attribute, *self.attributes[index + 1:])
+
+    def remove_attribute(self, attribute: 'Attribute') -> None:
+        index = self.index_of_attribute(attribute)
+
+        self.attributes = (*self.attributes[:index], *self.attributes[index + 1:])
 
     def copy(self):
         copied_attributes = tuple(value.copy() for value in self.attributes)
@@ -136,18 +170,26 @@ class XmlElement:
     def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
 
-        self.children = tuple(chain(self.children[:index], (new_element,), self.children[index:]))
+        self.children = (*self.children[:index], new_element, *self.children[index:])
 
     def insert_element_after(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
 
-        self.children = tuple(chain(self.children[:index + 1], (new_element,), self.children[index + 1:]))
+        self.children = (*self.children[:index + 1], new_element, *self.children[index + 1:])
 
     def index_of_element(self, element: 'XmlElement') -> int:
         index = next((i for i, obj in enumerate(self.children) if obj is element), None)
 
         if index is None:
             raise ValueError('Element is not a child of this element.')
+
+        return index
+
+    def index_of_attribute(self, attribute: 'Attribute') -> int:
+        index = next((i for i, obj in enumerate(self.attributes) if obj is attribute), None)
+
+        if index is None:
+            raise ValueError('Attribute is not part of this element.')
 
         return index
 
@@ -176,7 +218,7 @@ class XmlElement:
         registry = AttributeRegistry()
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
-        attribute_value_cls = registry.get_attribute_value_cls(namespace)
+        attribute_value_cls = registry.get_attribute_value_cls(namespace, q.localname)
         return attribute_value_cls._from_item(parser, file_path, namespaces, name, value)
 
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
@@ -234,11 +276,11 @@ class XmlElement:
         missing_name = not hasattr(cls, 'default_name') or cls.default_name is None
 
         if cls.__name__ not in class_exceptions and missing_namespace:
-            raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_namespace class attribute")
+            raise ValueError(f"XmlElement subclass {cls.__name__} must define a default_namespace class attribute")
         if cls.__name__ not in class_exceptions and missing_name:
-            raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_name class attribute")
+            raise ValueError(f"XmlElement subclass {cls.__name__} must define a default_name class attribute")
         if cls.__name__ not in class_exceptions and missing_prefix:
-            raise ValueError(f"AttributeValue subclass {cls.__name__} must define a default_prefix class attribute")
+            raise ValueError(f"XmlElement subclass {cls.__name__} must define a default_prefix class attribute")
 
         if cls.__name__ not in class_exceptions:
             cls._register()

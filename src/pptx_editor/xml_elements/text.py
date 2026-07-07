@@ -1,9 +1,10 @@
 import re
 
 from abc import ABC, abstractmethod
-from itertools import chain
 from typing import TypeGuard
 
+from pptx_editor.attribute import AttributeStringProperty
+from pptx_editor.attributes.text import Typeface
 from pptx_editor.find import FindResult
 from pptx_editor.xml_element import XmlElement, XmlElementProperty
 from pptx_editor.exceptions import PowerpointIntegrityError
@@ -88,7 +89,7 @@ class Paragraph(XmlElement):
 
             match_end_offset = end_offset - current_offset
 
-            find_result = FindResult(match.group(0), tuple(chain((match.group(0),), match.groups())), self, match_elements, match_start_offset, match_end_offset)
+            find_result = FindResult(match.group(0), (match.group(0), *match.groups()), self, match_elements, match_start_offset, match_end_offset)
             results.append(find_result)
 
             for dependent_match in dependent_matches:
@@ -106,6 +107,13 @@ class Highlight(XmlElement):
 
     color: Color = XmlElementProperty(Color, nullable=False)
 
+class LatinFont(XmlElement):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 'latin'
+
+    typeface: str = AttributeStringProperty(Typeface, nullable=False)
+
 class RunProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
@@ -113,6 +121,7 @@ class RunProperties(XmlElement):
 
     fill: Fill | None = XmlElementProperty(Fill)
     highlight: Highlight | None = XmlElementProperty(Highlight)
+    latin_font: LatinFont | None = XmlElementProperty(LatinFont)
 
 
 class Text(XmlElement):

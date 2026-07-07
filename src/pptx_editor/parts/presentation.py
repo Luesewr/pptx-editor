@@ -19,16 +19,16 @@ class Presentation(XmlPart):
 
     @property
     def slides(self) -> list['Slide']:
-        return self._slide_id_list.slides()
+        return self._slide_id_list.slides
 
     @property
     def _slide_id_list(self) -> 'SlideIdList':
-        slide_id_list = self.get_element('sldIdLst', 'p')
+        slide_id_list = self.get_element_by_type(SlideIdList)
 
         if slide_id_list is None:
             raise PowerpointIntegrityError('The presentation part is missing the required sldIdLst element.')
 
-        if slide_id_list is not None and not isinstance(slide_id_list, SlideIdList):
+        if not isinstance(slide_id_list, SlideIdList):
             raise PowerpointIntegrityError('The sldIdLst element in the presentation part is not of the expected type.')
 
         return slide_id_list

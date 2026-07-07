@@ -30,9 +30,19 @@ class XmlPart(Part):
             return self.data.get_element(name, prefix)
         return None
 
+    def get_element_by_type(self, element_type: type['XmlElement']) -> 'XmlElement | None':
+        if self.data:
+            return self.data.get_element_by_type(element_type)
+        return None
+
     def get_elements(self, name: str, prefix: str | None = None) -> list['XmlElement']:
         if self.data:
             return self.data.get_elements(name, prefix)
+        return []
+
+    def get_elements_by_type(self, element_type: type['XmlElement']) -> list['XmlElement']:
+        if self.data:
+            return self.data.get_elements_by_type(element_type)
         return []
 
     def _to_file(self, writer: '_OOXMLWriter'):

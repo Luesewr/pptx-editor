@@ -175,7 +175,7 @@ class FindResult:
             first_element.content_text = first_element.content_text[:self.start_offset] + new_text + last_element.content_text[self.end_offset:]
             return
 
-        smooth_texts = _split_smooth(new_text, len(self.elements))
+        smooth_texts = _distribute_text(new_text, len(self.elements))
 
         first_element.content_text = first_element.content_text[:self.start_offset] + smooth_texts[0]
         last_element.content_text = smooth_texts[-1] + last_element.content_text[self.end_offset:]
@@ -257,9 +257,9 @@ class FindResult:
         return len(last_element.content_text)
 
 
-def _split_smooth(text, n):
-    k, m = divmod(len(text), n)
+def _distribute_text(total_text, n):
+    k, m = divmod(len(total_text), n)
     # Distribute the remainder 'm' by adding 1 extra character to the first 'm' chunks
     return [
-        text[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n)
+        total_text[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n)
     ]

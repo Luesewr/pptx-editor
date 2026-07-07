@@ -7,18 +7,20 @@ from lxml import etree
 from typing import TYPE_CHECKING
 
 from pptx_editor.attribute import Attribute
+from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter
     from pptx_editor.parser import _OOXMLParser
-    from pptx_editor.relationship import Relationship
 
 class RelationshipAttribute(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+    default_prefix = 'r'
+    default_name = None
 
-    def __init__(self, name: str, value: 'str | Relationship', prefix: str | None = None):
-        self.prefix = prefix if prefix else None
-        self.name = sys.intern(name)
+    def __init__(self, value: 'str | Relationship', prefix: str | None = None, name: str | None = None, overwrite_prefix: bool = False):
+        self.prefix = prefix if prefix or overwrite_prefix else self.default_prefix
+        self.name = sys.intern(name) if name else self.default_name
         self.value: 'str | Relationship' = sys.intern(value) if isinstance(value, str) else value
 
     @classmethod
@@ -26,7 +28,7 @@ class RelationshipAttribute(Attribute):
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
-        relation_value = cls(q.localname, value, prefix)
+        relation_value = cls(value, prefix, q.localname)
 
         relation_value._resolve_target(parser, file_path)
 
@@ -59,5 +61,4 @@ class RelationshipAttribute(Attribute):
         self.value = relationship
 
     def __str__(self):
-        from pptx_editor.relationship import Relationship
         return f"RelationshipAttribute(name={self.name}, value={self.value.target.part_name if isinstance(self.value, Relationship) else self.value})"
