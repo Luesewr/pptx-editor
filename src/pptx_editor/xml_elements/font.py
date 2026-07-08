@@ -1,6 +1,6 @@
 from abc import ABC
 
-from pptx_editor.attribute import AttributeStringProperty
+from pptx_editor.attribute import StringAttributeProperty
 from pptx_editor.attributes.text import Typeface
 from pptx_editor.xml_element import XmlElement
 
@@ -8,7 +8,7 @@ from pptx_editor.xml_element import XmlElement
 class AbstractFont(XmlElement, ABC):
     is_abstract = True
 
-    typeface: str = AttributeStringProperty(Typeface, nullable=False)
+    typeface: str = StringAttributeProperty(Typeface, nullable=False)
 
     def __init_subclass__(cls, **kwargs):
         cls.is_abstract = False

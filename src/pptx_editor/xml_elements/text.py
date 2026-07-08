@@ -3,8 +3,8 @@ import re
 from abc import ABC, abstractmethod
 from typing import TypeGuard
 
-from pptx_editor.attribute import BooleanAttributeProperty
-from pptx_editor.attributes.text import Bold
+from pptx_editor.attribute import BooleanAttributeProperty, IntegerAttributeProperty, StringAttributeProperty
+from pptx_editor.attributes.text import Bold, Italic, Language, Underline, Strikethrough, FontSize, Dirty, Error
 from pptx_editor.find import FindResult
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.xml_element import XmlElement, XmlElementProperty
@@ -115,6 +115,13 @@ class RunProperties(XmlElement):
 
     fill: AbstractFill | None = XmlElementProperty(AbstractFill)
     bold: bool | None = BooleanAttributeProperty(Bold)
+    italic: bool | None = BooleanAttributeProperty(Italic)
+    underline: bool | None = BooleanAttributeProperty(Underline)
+    strikethrough: bool | None = BooleanAttributeProperty(Strikethrough)
+    font_size: int | None = IntegerAttributeProperty(FontSize, scalar=100)
+    language: str | None = StringAttributeProperty(Language)
+    dirty: bool | None = BooleanAttributeProperty(Dirty)
+    error: bool | None = BooleanAttributeProperty(Error)
     highlight: Highlight | None = XmlElementProperty(Highlight)
     latin_font: LatinFont | None = XmlElementProperty(LatinFont)
     complex_script_font: ComplexScriptFont | None = XmlElementProperty(ComplexScriptFont)

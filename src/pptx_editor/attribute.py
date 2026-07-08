@@ -77,7 +77,7 @@ class AttributeProperty(Generic[T]):
         elif value is not None:
             instance.add_attribute(value)
 
-class AttributeStringProperty(AttributeProperty[T]):
+class StringAttributeProperty(AttributeProperty[T]):
     def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> str | None:
         attribute = super().__get__(instance, owner, nullable_override)
         return attribute.value if attribute is not None else None
@@ -86,7 +86,7 @@ class AttributeStringProperty(AttributeProperty[T]):
         existing_attribute = super().__get__(instance, type(instance), nullable_override=True)
 
         if value is None and not self.nullable:
-            raise PowerpointIntegrityError(f"Cannot set a non-nullable AttributeStringProperty to None in {instance.__class__.__name__}.")
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable StringAttributeProperty to None in {instance.__class__.__name__}.")
 
         if existing_attribute is not None:
             if value is not None:
@@ -95,6 +95,30 @@ class AttributeStringProperty(AttributeProperty[T]):
                 instance.remove_attribute(existing_attribute)
         elif value is not None:
             attribute_instance = self.attribute_type(value)
+            instance.add_attribute(attribute_instance)
+
+class IntegerAttributeProperty(AttributeProperty[T]):
+    def __init__(self, attribute_type: type[T], nullable: bool = True, scalar: int | float = 1):
+        super().__init__(attribute_type, nullable)
+        self.scalar = scalar
+
+    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> int | None:
+        attribute = super().__get__(instance, owner, nullable_override)
+        return int(int(attribute.value) / self.scalar) if attribute is not None else None
+
+    def __set__(self, instance: 'XmlElement', value: int | None) -> None:
+        existing_attribute = super().__get__(instance, type(instance), nullable_override=True)
+
+        if value is None and not self.nullable:
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable IntegerAttributeProperty to None in {instance.__class__.__name__}.")
+
+        if existing_attribute is not None:
+            if value is not None:
+                existing_attribute.value = str(int(value * self.scalar))
+            else:
+                instance.remove_attribute(existing_attribute)
+        elif value is not None:
+            attribute_instance = self.attribute_type(str(int(value * self.scalar)))
             instance.add_attribute(attribute_instance)
 
 class BooleanAttributeProperty(AttributeProperty[T]):
