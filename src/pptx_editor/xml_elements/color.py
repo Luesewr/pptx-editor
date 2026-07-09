@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Self
 
-from pptx_editor.attributes.color import Hue, Saturation, Luminance, Red, Green, Blue
+from pptx_editor.attributes.color import ColorValue, Hue, Saturation, Luminance, Red, Green, Blue
 from pptx_editor.xml_element import XmlElement
-from pptx_editor.attribute import Attribute
 from pptx_editor.enums.ST_PresetColorVal import ST_PresetColorVal, ST_PresetColorVal_lookup
 from pptx_editor.exceptions import PowerpointIntegrityError
 
@@ -138,7 +137,7 @@ class PresetColor(AbstractColor):
     def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         for val, (pr, pg, pb) in ST_PresetColorVal_lookup.items():
             if (r, g, b) == (pr, pg, pb):
-                attributes = (Attribute('val', val.value),)
+                attributes = (ColorValue(val.value),)
                 return cls(attributes=attributes, part=part)
 
         raise ValueError(f'No preset color matches the RGB value ({r}, {g}, {b})')
@@ -151,7 +150,7 @@ class PresetColor(AbstractColor):
 
             val = ST_PresetColorVal(val)
 
-        attributes = (Attribute('val', val.value),)
+        attributes = (ColorValue(val.value),)
         return cls(attributes=attributes, part=part)
 
 
@@ -202,7 +201,7 @@ class SchemeColor(AbstractColor):
 
         for name, color_value in color_map.items():
             if theme.get_color(color_value).as_rgb() == (r, g, b):
-                attributes = (Attribute('val', name),)
+                attributes = (ColorValue(name),)
                 return cls(attributes=attributes, part=part)
 
         raise ValueError(f'No scheme color matches the RGB value ({r}, {g}, {b})')
@@ -263,7 +262,7 @@ class RgbColorModelHex(AbstractColor):
     @classmethod
     def from_rgb(cls, r: int, g: int, b: int, part: 'XmlPart | None' = None) -> Self:
         val = f'{r:02X}{g:02X}{b:02X}'
-        attributes = (Attribute('val', val),)
+        attributes = (ColorValue(val),)
         return cls(attributes=attributes, part=part)
 
 

@@ -36,3 +36,9 @@ class Blue(Attribute):
     default_prefix = None
     default_name = 'b'
     default_element_names = ['scrgbClr']
+
+class ColorValue(Attribute):
+    default_namespace = None
+    default_prefix = None
+    default_name = 'val'
+    default_element_names = ['srgbClr', 'prstClr', 'schemeClr', 'scrgbClr', 'hslClr']
