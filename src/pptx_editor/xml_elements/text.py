@@ -16,6 +16,7 @@ class TextBody(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_prefix = 'p'
     default_name = 'txBody'
+    default_order = ('bodyPr', 'lstStyle', 'p',)
 
     @property
     def paragraphs(self) -> list['Paragraph']:
@@ -93,6 +94,7 @@ class Paragraph(XmlElement):
             dependent_matches.append(find_result)
 
         return results
+
 
 class Highlight(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'

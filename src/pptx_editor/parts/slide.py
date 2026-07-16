@@ -6,7 +6,7 @@ from pptx_editor.parts.slide_layout import SlideLayout
 from pptx_editor.parts.theme import Theme
 from pptx_editor.parts.xml_part import XmlPart
 from pptx_editor.xml_elements.color import ColorMapOverride, MasterColorMapping, OverrideColorMapping
-from pptx_editor.xml_elements.shape import Shape
+from pptx_editor.xml_elements.shape import AbstractShape
 from pptx_editor.xml_elements.slide_data import CommonSlideData
 
 
@@ -16,7 +16,7 @@ class Slide(XmlPart):
     default_part_name = 'slide{i}.xml'
 
     @property
-    def shapes(self) -> list['Shape']:
+    def shapes(self) -> list['AbstractShape']:
         return self._common_slide_data.shapes
 
     @property

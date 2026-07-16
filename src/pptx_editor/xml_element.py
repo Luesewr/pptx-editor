@@ -190,7 +190,7 @@ class XmlElement:
         for child in self.children:
             child.update_part_recursive(part)
 
-    def create_if_null(self, element_type: type[T] | None = None):
+    def create_if_null(self, element_type: type[T] | None = None, add_mode: AddMode = AddMode.SORT):
         return self
 
     @staticmethod

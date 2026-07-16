@@ -1,15 +1,16 @@
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.xml_elements.shape import Shape
+from pptx_editor.xml_elements.shape import AbstractShape
 
 
 class CommonSlideData(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_prefix = 'p'
     default_name = 'cSld'
+    default_order = ('bg', 'spTree', 'custDataLst', 'controls', 'extLst',)
 
     @property
-    def shapes(self) -> list['Shape']:
+    def shapes(self) -> list['AbstractShape']:
         return self._shape_tree.shapes
 
     @property
@@ -29,7 +30,8 @@ class ShapeTree(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_prefix = 'p'
     default_name = 'spTree'
+    default_order = ('nvGrpSpPr', 'grpSpPr', ('sp', 'grpSp', 'graphicFrame', 'cxnSp', 'pic',), 'extLst',)
 
     @property
-    def shapes(self) -> list['Shape']:
-        return [attribute for attribute in self.children if isinstance(attribute, Shape)]
+    def shapes(self) -> list['AbstractShape']:
+        return self.get_elements_by_type(AbstractShape)

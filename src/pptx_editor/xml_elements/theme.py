@@ -8,6 +8,7 @@ class ThemeElements(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'themeElements'
+    default_order = ('clrScheme', 'fontScheme', 'fmtScheme', 'extLst',)
 
     @property
     def color_scheme(self) -> 'ColorScheme':
@@ -24,6 +25,10 @@ class ColorScheme(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'clrScheme'
+    default_order = (
+        'dk1', 'lt1', 'dk2', 'lt2', 'accent1', 'accent2', 'accent3',
+        'accent4', 'accent5', 'accent6', 'hlink', 'folHlink', 'extLst',
+    )
 
     @property
     def colors(self) -> dict[str, AbstractColor]:
