@@ -1,5 +1,3 @@
-from typing import TypeGuard
-
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.slide import Slide

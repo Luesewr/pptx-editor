@@ -24,6 +24,7 @@ class CommonSlideData(XmlElement):
 
         return shape_tree
 
+
 class ShapeTree(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_prefix = 'p'

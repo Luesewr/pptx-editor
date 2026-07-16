@@ -1,5 +1,5 @@
-from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.xml_element import XmlElement, XmlElementProperty
+from pptx_editor.properties.xml_element import RequiredXmlElementProperty
+from pptx_editor.xml_element import XmlElement
 from pptx_editor.xml_elements.color import AbstractColor
 
 class AbstractFill(XmlElement):
@@ -45,4 +45,4 @@ class SolidFill(AbstractFill):
     default_prefix = 'a'
     default_name = 'solidFill'
 
-    color: AbstractColor = XmlElementProperty(AbstractColor, nullable=False)
+    color = RequiredXmlElementProperty(AbstractColor)

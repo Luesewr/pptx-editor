@@ -1,16 +1,16 @@
 import re
 
 from abc import ABC, abstractmethod
-from typing import TypeGuard
 
-from pptx_editor.attribute import BooleanAttributeProperty, IntegerAttributeProperty, StringAttributeProperty
 from pptx_editor.attributes.text import Bold, Italic, Language, Underline, Strikethrough, FontSize, Dirty, Error
 from pptx_editor.find import FindResult
-from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.xml_element import XmlElement, XmlElementProperty
+from pptx_editor.properties.attribute import BooleanAttributeProperty, IntegerAttributeProperty, StringAttributeProperty
+from pptx_editor.properties.xml_element import RequiredXmlElementProperty, XmlElementProperty
+from pptx_editor.xml_element import XmlElement
 from pptx_editor.xml_elements.color import AbstractColor
-from pptx_editor.xml_elements.fill import AbstractFill
+from pptx_editor.xml_elements.fill import AbstractFill, SolidFill
 from pptx_editor.xml_elements.font import LatinFont, ComplexScriptFont, EastAsianFont, SymbolFont
+
 
 class TextBody(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
@@ -19,25 +19,18 @@ class TextBody(XmlElement):
 
     @property
     def paragraphs(self) -> list['Paragraph']:
-        attributes = self.get_elements_by_type(Paragraph)
-
-        if not self._is_paragraphs_valid(attributes):
-            raise PowerpointIntegrityError('All paragraph attributes must be of type Paragraph.')
-
-        return attributes
+        return self.get_elements_by_type(Paragraph)
 
     @property
     def paragraph_texts(self) -> str:
         return '\n\n'.join(paragraph.paragraph_text for paragraph in self.paragraphs)
-
-    def _is_paragraphs_valid(self, paragraphs: list[XmlElement]) -> TypeGuard[list['Paragraph']]:
-        return all(isinstance(paragraph, Paragraph) for paragraph in paragraphs)
 
 
 class Paragraph(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'p'
+    default_order = ('pPr', ('r', 'br', 'fld',), 'endParaRPr',)
 
     @property
     def runs(self) -> list['Run']:
@@ -106,27 +99,36 @@ class Highlight(XmlElement):
     default_prefix = 'a'
     default_name = 'highlight'
 
-    color: AbstractColor = XmlElementProperty(AbstractColor, nullable=False)
+    color = RequiredXmlElementProperty(AbstractColor)
+
 
 class RunProperties(XmlElement):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'rPr'
+    default_order = (
+        'ln', ('blipFill', 'gradFill', 'grpFill', 'noFill',
+        'pattFill', 'solidFill',), ('effectDag', 'effectLst',),
+        'highlight', ('unLn', 'uLnTx',), ('uFill', 'uFillTx',),
+        'latin', 'ea', 'cs', 'sym', 'hlinkClick', 'hlinkMouseOver',
+        'extLst',
+    )
 
-    fill: AbstractFill | None = XmlElementProperty(AbstractFill)
-    bold: bool | None = BooleanAttributeProperty(Bold)
-    italic: bool | None = BooleanAttributeProperty(Italic)
-    underline: bool | None = BooleanAttributeProperty(Underline)
-    strikethrough: bool | None = BooleanAttributeProperty(Strikethrough)
-    font_size: int | None = IntegerAttributeProperty(FontSize, scalar=100)
-    language: str | None = StringAttributeProperty(Language)
-    dirty: bool | None = BooleanAttributeProperty(Dirty)
-    error: bool | None = BooleanAttributeProperty(Error)
-    highlight: Highlight | None = XmlElementProperty(Highlight)
-    latin_font: LatinFont | None = XmlElementProperty(LatinFont)
-    complex_script_font: ComplexScriptFont | None = XmlElementProperty(ComplexScriptFont)
-    east_asian_font: EastAsianFont | None = XmlElementProperty(EastAsianFont)
-    symbol_font: SymbolFont | None = XmlElementProperty(SymbolFont)
+    fill = XmlElementProperty(AbstractFill)
+    solid_fill = XmlElementProperty(SolidFill)
+    bold = BooleanAttributeProperty(Bold)
+    italic = BooleanAttributeProperty(Italic)
+    underline = BooleanAttributeProperty(Underline)
+    strikethrough = BooleanAttributeProperty(Strikethrough)
+    font_size = IntegerAttributeProperty(FontSize, scalar=100)
+    language = StringAttributeProperty(Language)
+    dirty = BooleanAttributeProperty(Dirty)
+    error = BooleanAttributeProperty(Error)
+    highlight = XmlElementProperty(Highlight)
+    latin_font = XmlElementProperty(LatinFont)
+    complex_script_font = XmlElementProperty(ComplexScriptFont)
+    east_asian_font = XmlElementProperty(EastAsianFont)
+    symbol_font = XmlElementProperty(SymbolFont)
 
 
 class Text(XmlElement):
@@ -138,7 +140,7 @@ class Text(XmlElement):
 class AbstractParagraphContent(XmlElement, ABC):
     is_abstract = True
 
-    properties: RunProperties | None = XmlElementProperty(RunProperties)
+    properties = XmlElementProperty(RunProperties)
 
     @property
     @abstractmethod
@@ -154,8 +156,9 @@ class Run(AbstractParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'r'
+    default_order = ('rPr', 't',)
 
-    _content_text: Text = XmlElementProperty(Text, nullable=False)
+    _content_text = RequiredXmlElementProperty(Text)
 
     @property
     def content_text(self) -> str:
@@ -175,12 +178,14 @@ class Break(AbstractParagraphContent):
     def content_text(self) -> str:
         return '\n'
 
+
 class TextField(AbstractParagraphContent):
     default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
     default_prefix = 'a'
     default_name = 'fld'
+    default_order = ('rPr', 'pPr', 't',)
 
-    _content_text: Text = XmlElementProperty(Text, nullable=False)
+    _content_text = RequiredXmlElementProperty(Text)
 
     @property
     def content_text(self) -> str:

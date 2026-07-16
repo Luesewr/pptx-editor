@@ -2,14 +2,16 @@ import sys
 
 from io import BytesIO
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, TypeVar, Generic
+from typing import TYPE_CHECKING, TypeVar, TypeIs
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
+import pptx_editor.xml_elements as xml_elements
+
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
-from pptx_editor.attribute import Attribute, AttributeRegistry
-from pptx_editor.exceptions import PowerpointIntegrityError
+from pptx_editor.attribute import Attribute
+from pptx_editor.modes.xml_element import AddMode
 from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
     from pptx_editor.writer import _OOXMLWriter
     from pptx_editor.parts.xml_part import XmlPart
+    from pptx_editor.xml_elements.null import NullElement
 
 T = TypeVar('T', bound='XmlElement')
 U = TypeVar('U', bound='Attribute')
@@ -31,47 +34,11 @@ class XmlElementRegistry(metaclass=SingletonMeta):
     def get_element_cls(self, namespace: str | None, name: str | None = None) -> type['XmlElement']:
         return self._registry.get((namespace, name), XmlElement)
 
-class XmlElementProperty(Generic[T]):
-    def __init__(self, element_type: type[T], nullable: bool = True):
-        self.element_type = element_type
-        self.nullable = nullable
-
-    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> T | None:
-        if instance is None:
-            raise AttributeError("XmlElementProperty can only be accessed from an instance.")
-
-        child_element = instance.get_element_by_type(self.element_type)
-
-        if child_element is not None:
-            return child_element
-
-        if not self.nullable and not nullable_override:
-            raise PowerpointIntegrityError(f"Expected a child of type {self.element_type.__name__} in {instance.__class__.__name__}, but none was found.")
-
-        return None
-
-    def __set__(self, instance: 'XmlElement', value: T | None) -> None:
-        existing_element = self.__get__(instance, type(instance), nullable_override=True)
-
-        if value is None and not self.nullable:
-            raise PowerpointIntegrityError(f"Cannot set a non-nullable XmlElementProperty to None in {instance.__class__.__name__}.")
-
-        if value is not None and value.part is not instance.part:
-            value = value.copy()
-            value.part = instance.part
-
-        if existing_element is not None:
-            if value is not None:
-                instance.replace_element(existing_element, value)
-            else:
-                instance.remove_element(existing_element)
-        elif value is not None:
-            instance.add_element(value)
-
 class XmlElement:
     default_namespace: str | None = None
     default_prefix: str | None = None
     default_name: str | None = None
+    default_order: tuple[str | tuple[str, ...], ...] | None = None
 
     __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'part', 'namespaces']
 
@@ -116,13 +83,33 @@ class XmlElement:
     def get_elements_by_type(self, element_type: type[T]) -> list[T]:
         return [element for element in self.children if isinstance(element, element_type)]
 
-    def add_element(self, element: 'XmlElement') -> None:
-        self.children = (*self.children, element)
+    def add_element(self, element: 'XmlElement', index: int | None = None) -> None:
+        if index is None:
+            self.children = (*self.children, element)
+        else:
+            self.children = (*self.children[:index], element, *self.children[index:])
+
+    def auto_add_element(self, element: 'XmlElement', index: int | None = None, add_mode: AddMode = AddMode.SORT) -> None:
+        if self.default_order is None:
+            self.add_element(element, index=index)
+            return
+
+        if add_mode == AddMode.SORT:
+            self.add_element(element, index=index)
+            self.sort_children()
 
     def replace_element(self, old_element: T, new_element: T) -> None:
         index = self.index_of_element(old_element)
 
         self.children = (*self.children[:index], new_element, *self.children[index + 1:])
+
+    def auto_replace_element(self, old_element: T, new_element: T, add_mode: AddMode = AddMode.SORT) -> None:
+        index = self.index_of_element(old_element)
+
+        self.children = (*self.children[:index], new_element, *self.children[index + 1:])
+
+        if add_mode == AddMode.SORT:
+            self.sort_children()
 
     def remove_element(self, element: 'XmlElement') -> None:
         index = self.index_of_element(element)
@@ -193,6 +180,34 @@ class XmlElement:
 
         return index
 
+    def sort_children(self) -> None:
+        if self.default_order is not None:
+            self.children = tuple(sorted(self.children, key=self._default_order_key))
+
+    def create_if_null(self, element_type: type[T] | None = None):
+        return self
+
+    @staticmethod
+    def is_null(element: 'T | NullElement[T]') -> TypeIs['NullElement[T]']:
+        return isinstance(element, xml_elements.null.NullElement)
+
+    @staticmethod
+    def is_not_null(element: 'T | NullElement[T]') -> TypeIs[T]:
+        return not isinstance(element, xml_elements.null.NullElement)
+
+    def _default_order_key(self, element: 'XmlElement') -> int:
+        if self.default_order is None:
+            return 0
+
+        for index, name in enumerate(self.default_order):
+            if isinstance(name, tuple):
+                if element.name in name:
+                    return index
+            elif element.name == name:
+                return index
+
+        return len(self.default_order)
+
     @classmethod
     def _from_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
         q = etree.QName(xml)
@@ -260,7 +275,7 @@ class XmlElement:
         if getattr(cls, 'is_abstract', False):
             return
 
-        class_exceptions = []
+        class_exceptions = ['NullElement']
         missing_namespace = not hasattr(cls, 'default_namespace') or cls.default_namespace is None
         missing_prefix = not hasattr(cls, 'default_prefix') or cls.default_prefix is None
         missing_name = not hasattr(cls, 'default_name') or cls.default_name is None
