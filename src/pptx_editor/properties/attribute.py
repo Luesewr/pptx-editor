@@ -33,7 +33,6 @@ class AttributeProperty(Generic[T]):
 
         if value is not None and value.part is not instance.part:
             value = value.copy()
-            value.part = instance.part
 
         if existing_attribute is not None:
             if value is not None:

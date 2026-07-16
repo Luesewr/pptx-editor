@@ -31,7 +31,7 @@ class XmlElementProperty(Generic[T]):
 
         if value is not None and value.part is not instance.part:
             value = value.copy()
-            value.part = instance.part
+            value.update_part_recursive(instance.part)
 
         if not isinstance(existing_element, NullElement):
             if value is not None:

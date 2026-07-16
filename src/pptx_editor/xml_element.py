@@ -184,6 +184,12 @@ class XmlElement:
         if self.default_order is not None:
             self.children = tuple(sorted(self.children, key=self._default_order_key))
 
+    def update_part_recursive(self, part: 'XmlPart') -> None:
+        self.part = part
+
+        for child in self.children:
+            child.update_part_recursive(part)
+
     def create_if_null(self, element_type: type[T] | None = None):
         return self
 
