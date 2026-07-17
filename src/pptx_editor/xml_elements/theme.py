@@ -1,23 +1,6 @@
-from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.xml_elements.color import AbstractColor
-
-
-class ThemeElements(XmlElement):
-    """Represents the themeElements element in a PowerPoint presentation."""
-    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
-    default_prefix = 'a'
-    default_name = 'themeElements'
-    default_order = ('clrScheme', 'fontScheme', 'fmtScheme', 'extLst',)
-
-    @property
-    def color_scheme(self) -> 'ColorScheme':
-        color_scheme = self.get_element_by_type(ColorScheme)
-
-        if color_scheme is None:
-            raise PowerpointIntegrityError("ThemeElements does not have an associated color scheme.")
-
-        return color_scheme
+from pptx_editor.properties.xml_element import RequiredXmlElementProperty
 
 
 class ColorScheme(XmlElement):
@@ -33,3 +16,13 @@ class ColorScheme(XmlElement):
     @property
     def colors(self) -> dict[str, AbstractColor]:
         return {element.name: element.children[0] for element in self.children if element.children and isinstance(element.children[0], AbstractColor)}
+
+
+class ThemeElements(XmlElement):
+    """Represents the themeElements element in a PowerPoint presentation."""
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+    default_name = 'themeElements'
+    default_order = ('clrScheme', 'fontScheme', 'fmtScheme', 'extLst',)
+
+    color_scheme = RequiredXmlElementProperty(ColorScheme)

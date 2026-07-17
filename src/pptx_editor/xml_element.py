@@ -51,17 +51,6 @@ class XmlElement:
         self.part = part
         self.namespaces = namespaces
 
-    def get_relationships(self) -> list['Relationship']:
-        relationships = []
-        for value in self.attributes:
-            if isinstance(value, RelationshipAttribute) and hasattr(value, 'value') and isinstance(value.value, Relationship):
-                relationships.append(value.value)
-
-        for child in self.children:
-            relationships.extend(child.get_relationships())
-
-        return relationships
-
     def get_element(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
         for element in self.children:
             if element.name == name and element.prefix == prefix:

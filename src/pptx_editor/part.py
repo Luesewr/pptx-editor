@@ -29,11 +29,11 @@ class PartRegistry(metaclass=SingletonMeta):
 
 class Part():
     default_content_type: str | None = None
-    default_base_path: PurePosixPath | None
-    default_part_name: str | None
+    default_base_path: PurePosixPath | None = None
+    default_part_name: str | None = None
     default_attribute_name: str | None = None
 
-    def __init__(self, main_part: 'XmlElement', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
+    def __init__(self, main_part: 'Part', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
         self.main_part = main_part
 
         self.part_name: str | None = None
@@ -155,7 +155,11 @@ class Part():
         buffer.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'.encode('utf-8'))
         buffer.write('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'.encode('utf-8'))
 
-        for relationship in self.relationships:
+        writer.assign_relationship_ids(self, self.relationships)
+
+        relationships = list(writer.relationship_id_lookup.get(self, {}).values())
+
+        for relationship in relationships:
             relationship._to_xml(writer, buffer)
 
         buffer.write('</Relationships>'.encode('utf-8'))
@@ -170,7 +174,7 @@ class Part():
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         writer.write_file(relationship_file_path, buffer.getvalue())
 
-        for relationship in self.relationships:
+        for relationship in relationships:
             if not relationship.is_external():
                 relationship.target._to_file(writer)
 

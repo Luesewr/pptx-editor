@@ -52,3 +52,8 @@ class Presentation(XmlPart):
 
         buffer.seek(0)
         return buffer
+
+    def save_to_file(self, file: IO) -> None:
+        with ZipFile(file, 'w', ZIP_DEFLATED) as zip_file:
+            writer = pptx_editor.writer._OOXMLWriter(zip_file)
+            writer.write_to_buffer(self)

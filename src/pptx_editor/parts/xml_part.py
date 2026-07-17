@@ -66,13 +66,6 @@ class XmlPart(Part):
         if not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path
 
-        if self.unlock_relationships:
-            body_relationships = self.data.get_relationships() if self._data else []
-            self.relationships = list(dict.fromkeys(body_relationships + self.relationships))
-
-            writer.assign_relationship_ids(self, self.relationships)
-            writer.assign_relation_part_indexes(self.relationships)
-
         # Write the part's XML content to the zip file
         if self._data is not None:
             buffer = BytesIO()
@@ -84,7 +77,10 @@ class XmlPart(Part):
                 self._data._to_xml(writer, buffer)
             else:
                 buffer.write(self._data)
+                self.relationships.sort(key=lambda r: r.original_id.removeprefix('rId'))
             writer.write_file(file_path, buffer.getvalue())
+
+        writer.assign_relation_part_indexes(self.relationships)
 
         writer.add_written_part(self)
 
