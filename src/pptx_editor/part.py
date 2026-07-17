@@ -49,7 +49,8 @@ class Part():
             self.part_name: str | None = sys.intern(m.group(1) + '{i}' + m.group(2))
 
         self.relationships: list[Relationship] = []
-        self.data: Any | None = None
+        self._data: Any | None = None
+        self.unlock_relationships: bool = True
 
         self.content_type: str | None = None
 
@@ -66,6 +67,12 @@ class Part():
         for relationship in self.relationships:
             if isinstance(relationship.target, part_cls):
                 return relationship.target
+        return None
+
+    def get_relationship(self, original_relationship_id: str) -> 'Relationship | None':
+        for relationship in self.relationships:
+            if relationship.original_id == original_relationship_id:
+                return relationship
         return None
 
     @classmethod
@@ -93,8 +100,8 @@ class Part():
             file_path = PurePosixPath('/') / file_path
 
         # Write the part's XML content to the zip file
-        if self.data is not None:
-            writer.write_file(file_path, self.data)
+        if self._data is not None:
+            writer.write_file(file_path, self._data)
 
         writer.add_written_part(self)
 
@@ -106,7 +113,7 @@ class Part():
             self._parse_relationships(parser, file_path)
 
         file_data = parser.read_file(file_path)
-        self.data = file_data
+        self._data = file_data
 
     def _get_file_path(self) -> PurePosixPath | None:
         file_path = None

@@ -1,19 +1,16 @@
 import sys
 
 from io import BytesIO
-from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
-from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.singleton import SingletonMeta
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import _OOXMLParser
     from pptx_editor.writer import _OOXMLWriter
-    from pptx_editor.xml_element import XmlElement
+    from pptx_editor.parts.xml_part import XmlPart
 
 T = TypeVar('T', bound='Attribute')
 
@@ -57,7 +54,7 @@ class Attribute:
         return self.__class__(self.value, self.prefix, self.name, overwrite_prefix=True)
 
     @classmethod
-    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
+    def _from_item(cls, part: 'XmlPart', namespaces: dict[str | None, str], name: str, value: str) -> 'Attribute':
         q = etree.QName(name)
         namespace = q.namespace if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None

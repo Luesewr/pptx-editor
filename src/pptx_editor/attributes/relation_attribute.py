@@ -11,7 +11,7 @@ from pptx_editor.relationship import Relationship
 
 if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter
-    from pptx_editor.parser import _OOXMLParser
+    from pptx_editor.parts.xml_part import XmlPart
 
 class RelationshipAttribute(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
@@ -25,13 +25,13 @@ class RelationshipAttribute(Attribute):
         self.value: 'str | Relationship' = sys.intern(value) if isinstance(value, str) else value
 
     @classmethod
-    def _from_item(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipAttribute':
+    def _from_item(cls, part: 'XmlPart', namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipAttribute':
         q = etree.QName(name)
         namespace = sys.intern(q.namespace) if q.namespace else None
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
         relation_value = cls(value, prefix, q.localname)
 
-        relation_value._resolve_target(parser, file_path)
+        relation_value._resolve_target(part)
 
         return relation_value
 
@@ -44,19 +44,15 @@ class RelationshipAttribute(Attribute):
             escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{escaped_relationship_id}"'.encode('utf-8'))
 
-    def _resolve_target(self, parser: '_OOXMLParser', file_path: PurePosixPath | None):
-        if file_path is None:
-            print('Integrity warning: Cannot resolve relation value without file path context')
-            return
-
+    def _resolve_target(self, part: 'XmlPart'):
         if not isinstance(self.value, str):
             return
 
         relationship_id = self.value
-        relationship = parser.get_relationship(file_path, relationship_id)
+        relationship = part.get_relationship(relationship_id)
         if relationship is None:
             escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
-            print(f"Integrity warning: No relationship found with id {escaped_relationship_id} in part {file_path}")
+            print(f"Integrity warning: No relationship found with id {escaped_relationship_id} in part {part.part_name}")
             return
 
         self.value = relationship

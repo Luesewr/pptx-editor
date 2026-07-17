@@ -1,16 +1,14 @@
-import sys
-
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from lxml import etree
 
+import pptx_editor.parser as parser
 from pptx_editor.part import Part
 from pptx_editor.xml_element import XmlElement
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import _OOXMLParser
     from pptx_editor.writer import _OOXMLWriter
 
 class XmlPart(Part):
@@ -22,35 +20,45 @@ class XmlPart(Part):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.data: XmlElement | None = None
+        self._data: XmlElement | bytes | None = None
         self.docinfo: 'etree.DocInfo' | None = None
+        self._is_data_parsed: bool = False
+        self.unlock_relationships: bool = False
 
     def get_element(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
-        if self.data:
-            return self.data.get_element(name, prefix)
-        return None
+        return self.data.get_element(name, prefix)
 
     def get_element_by_type(self, element_type: type['XmlElement']) -> 'XmlElement | None':
-        if self.data:
-            return self.data.get_element_by_type(element_type)
-        return None
+        return self.data.get_element_by_type(element_type)
 
     def get_elements(self, name: str, prefix: str | None = None) -> list['XmlElement']:
-        if self.data:
-            return self.data.get_elements(name, prefix)
-        return []
+        return self.data.get_elements(name, prefix)
 
     def get_elements_by_type(self, element_type: type['XmlElement']) -> list['XmlElement']:
-        if self.data:
-            return self.data.get_elements_by_type(element_type)
-        return []
+        return self.data.get_elements_by_type(element_type)
+
+    @property
+    def data(self) -> 'XmlElement':
+        if not self._is_data_parsed:
+            file_xml, ns_declarations = self._get_xml()
+
+            if file_xml is None:
+                raise ValueError("Part does not contain data")
+
+            self._data = parser._OOXMLParser.parse_element_from_xml(self, file_xml, ns_declarations)
+            self.docinfo = file_xml.getroottree().docinfo
+
+            self._is_data_parsed = True
+            self.unlock_relationships = True
+
+        if not isinstance(self._data, XmlElement):
+            raise ValueError("Part data is not an XmlElement")
+
+        return self._data
 
     def _to_file(self, writer: '_OOXMLWriter'):
         if writer.is_part_written(self):
             return
-
-        body_relationships = self.data.get_relationships() if self.data else []
-        self.relationships = list(dict.fromkeys(body_relationships + self.relationships))
 
         file_name = writer.assign_part_index(self.part_name, self)
         file_path = PurePosixPath(self.base_path) / file_name if self.base_path else file_name
@@ -58,17 +66,24 @@ class XmlPart(Part):
         if not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path
 
-        writer.assign_relationship_ids(self, self.relationships)
-        writer.assign_relation_part_indexes(self.relationships)
+        if self.unlock_relationships:
+            body_relationships = self.data.get_relationships() if self._data else []
+            self.relationships = list(dict.fromkeys(body_relationships + self.relationships))
+
+            writer.assign_relationship_ids(self, self.relationships)
+            writer.assign_relation_part_indexes(self.relationships)
 
         # Write the part's XML content to the zip file
-        if self.data is not None:
+        if self._data is not None:
             buffer = BytesIO()
 
-            if self.docinfo and self.docinfo.standalone is not None:
-                buffer.write(f'<?xml version="1.0" encoding="UTF-8" standalone="{"yes" if self.docinfo.standalone else "no"}"?>\n'.encode('utf-8'))
+            if self._is_data_parsed:
+                if self.docinfo and self.docinfo.standalone is not None:
+                    buffer.write(f'<?xml version="1.0" encoding="UTF-8" standalone="{"yes" if self.docinfo.standalone else "no"}"?>\n'.encode('utf-8'))
 
-            self.data._to_xml(writer, buffer)
+                self._data._to_xml(writer, buffer)
+            else:
+                buffer.write(self._data)
             writer.write_file(file_path, buffer.getvalue())
 
         writer.add_written_part(self)
@@ -76,31 +91,15 @@ class XmlPart(Part):
         if len(self.relationships) > 0:
             self._write_relationships_file(writer)
 
-    def _parse_data(self, parser: '_OOXMLParser', file_path: PurePosixPath):
-        if self._has_relationship_file(parser, file_path):
-            self._parse_relationships(parser, file_path)
-
-        file_xml, ns_declarations = self._get_file_xml(parser, file_path)
-
-        if file_xml is not None:
-            self.data = parser.parse_element_from_xml(file_path, file_xml, ns_declarations)
-            self.docinfo = file_xml.getroottree().docinfo
-        else:
-            self.data = None
-            self.docinfo = None
-
-    def _get_file_xml(self, parser: '_OOXMLParser', file_path: PurePosixPath | None) -> tuple[etree._Element | None, dict[str, dict[str | None, str]] | None]:
-        file_path = self._get_file_path() if file_path is None else file_path
-        if not file_path:
+    def _get_xml(self) -> tuple[etree._Element | None, dict[str, dict[str | None, str]] | None]:
+        if self._data is None:
             return None, None
-
-        file_data_bytes = parser.read_file(file_path)
 
         ns_declarations = {}
         pending_ns = []
 
         context = etree.iterparse(
-            BytesIO(file_data_bytes),
+            BytesIO(self._data),
             events=('start-ns', 'start'),
         )
 

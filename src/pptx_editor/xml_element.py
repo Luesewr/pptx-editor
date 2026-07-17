@@ -1,13 +1,13 @@
 import sys
 
 from io import BytesIO
-from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, TypeVar, TypeIs
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
 import pptx_editor.xml_elements as xml_elements
+import pptx_editor.parser as parser
 
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
 from pptx_editor.attribute import Attribute
@@ -16,7 +16,6 @@ from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
 if TYPE_CHECKING:
-    from pptx_editor.parser import _OOXMLParser
     from pptx_editor.writer import _OOXMLWriter
     from pptx_editor.parts.xml_part import XmlPart
     from pptx_editor.xml_elements.null import NullElement
@@ -215,15 +214,14 @@ class XmlElement:
         return len(self.default_order)
 
     @classmethod
-    def _from_xml(cls, parser: '_OOXMLParser', file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
+    def _from_xml(cls, part: 'XmlPart', xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
         q = etree.QName(xml)
         name = sys.intern(q.localname)
         prefix = xml.prefix or None
-        attributes = tuple(parser.parse_attribute_from_item(file_path, xml.nsmap, name, str(key), str(value)) for key, value in xml.attrib.items())
-        children = tuple(parser.parse_element_from_xml(file_path, child, ns_declarations) for child in xml)
+        attributes = tuple(parser._OOXMLParser.parse_attribute_from_item(part, xml.nsmap, name, str(key), str(value)) for key, value in xml.attrib.items())
+        children = tuple(parser._OOXMLParser.parse_element_from_xml(part, child, ns_declarations) for child in xml)
         text = sys.intern(xml.text) if xml.text is not None else xml.text
         tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail
-        part = parser.get_part(file_path) if file_path is not None else None
         xml_path = xml.getroottree().getpath(xml)
 
         defined_namespace = []

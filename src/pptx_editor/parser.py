@@ -1,4 +1,3 @@
-from collections import defaultdict
 from pathlib import PurePosixPath
 from zipfile import ZipFile
 from typing import IO
@@ -10,14 +9,12 @@ from pptx_editor.attribute import AttributeRegistry
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part, PartRegistry
-from pptx_editor.relationship import Relationship
 from pptx_editor.xml_element import XmlElement, XmlElementRegistry
 
 class _OOXMLParser:
     def __init__(self, file: IO, return_location: str = '/ppt/presentation.xml'):
         self.zip_file = ZipFile(file)
         self.parts: dict[PurePosixPath, 'Part'] = {}
-        self.relationships: dict[PurePosixPath, dict[str, Relationship]] = defaultdict(dict)
         self.content_types: ContentTypes | None = None
         self.return_location = PurePosixPath(return_location)
 
@@ -47,22 +44,24 @@ class _OOXMLParser:
 
         return part
 
-    def parse_element_from_xml(self, file_path: PurePosixPath | None, xml: etree._Element, ns_declarations: dict[str | None, str]) -> 'XmlElement':
+    @staticmethod
+    def parse_element_from_xml(part: 'Part', xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None) -> 'XmlElement':
         registry = XmlElementRegistry()
         q = etree.QName(xml)
         namespace = q.namespace if q.namespace else None
         name = q.localname
 
         element_cls = registry.get_element_cls(namespace, name)
-        element = element_cls._from_xml(self, file_path, xml, ns_declarations)
+        element = element_cls._from_xml(part, xml, ns_declarations)
         return element
 
-    def parse_attribute_from_item(self, file_path: PurePosixPath | None, namespaces: dict[str | None, str], element_name: str, name: str, value: str):
+    @staticmethod
+    def parse_attribute_from_item(part: 'Part', namespaces: dict[str | None, str], element_name: str, name: str, value: str):
         registry = AttributeRegistry()
         q = etree.QName(name)
         namespace = q.namespace if q.namespace else None
         attribute_cls = registry.get_attribute_value_cls(namespace, name, element_name)
-        attribute_value = attribute_cls._from_item(self, file_path, namespaces, name, value)
+        attribute_value = attribute_cls._from_item(part, namespaces, name, value)
 
         return attribute_value
 
@@ -95,15 +94,5 @@ class _OOXMLParser:
     def has_part(self, file_path: PurePosixPath) -> bool:
         return file_path in self.parts
 
-    def add_relationship(self, file_path: PurePosixPath | None, relationship_id: str | None, relationship: 'Relationship'):
-        if file_path and relationship_id:
-            self.relationships[file_path][relationship_id] = relationship
-
-    def has_relationship(self, file_path: PurePosixPath, relationship_id: str) -> bool:
-        return relationship_id in self.relationships[file_path]
-
     def get_part(self, file_path: PurePosixPath):
         return self.parts.get(file_path)
-
-    def get_relationship(self, file_path: PurePosixPath, relationship_id: str) -> 'Relationship | None':
-        return self.relationships[file_path].get(relationship_id)
