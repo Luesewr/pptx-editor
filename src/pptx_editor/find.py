@@ -1,6 +1,6 @@
 from typing import cast
 
-import pptx_editor.xml_elements.text as text
+from pptx_editor.xml_elements import text
 
 from pptx_editor.modes.find import StyleInheritMode, MergeMode, NewlineMode, CleanupMode
 

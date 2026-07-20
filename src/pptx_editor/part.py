@@ -6,26 +6,11 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 from pptx_editor.relationship import Relationship
-from pptx_editor.singleton import SingletonMeta
+from pptx_editor.registries.part import PartRegistry
 
 if TYPE_CHECKING:
     from pptx_editor.parser import _OOXMLParser
-    from pptx_editor.xml_element import XmlElement
     from pptx_editor.writer import _OOXMLWriter
-
-class PartRegistry(metaclass=SingletonMeta):
-    def __init__(self):
-        self._registry = {}
-
-    def register(self, content_type: str, part_cls):
-        self._registry[content_type] = part_cls
-
-    def get_part_cls(self, content_type: str) -> type['Part']:
-        if content_type in self._registry:
-            return self._registry[content_type]
-        if '+xml' in content_type:
-            return self.get_part_cls('application/xml')
-        return Part
 
 class Part():
     default_content_type: str | None = None
@@ -86,6 +71,7 @@ class Part():
 
         parser.add_part(file_path, part)
         part._parse_data(parser, file_path)
+
         return part
 
     def _to_file(self, writer: '_OOXMLWriter'):

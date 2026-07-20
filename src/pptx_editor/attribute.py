@@ -1,48 +1,16 @@
-import sys
-
 from io import BytesIO
 from typing import TYPE_CHECKING, TypeVar
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
-from pptx_editor.singleton import SingletonMeta
+from pptx_editor.registries.attribute import AttributeRegistry
 
 if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter
     from pptx_editor.parts.xml_part import XmlPart
 
 T = TypeVar('T', bound='Attribute')
-
-class AttributeRegistry(metaclass=SingletonMeta):
-    def __init__(self):
-        self._registry = {}
-
-    def register(self, namespace: str, name: str, element_names: list[str] | None, attribute_value_cls):
-        if element_names is None:
-            self._registry[(namespace, name, None)] = attribute_value_cls
-        else:
-            for element_name in element_names:
-                self._registry[(namespace, name, element_name)] = attribute_value_cls
-
-    def get_attribute_value_cls(self, namespace: str | None, name: str, element_name: str | None = None) -> type['Attribute']:
-        exact_match = self._registry.get((namespace, name, element_name))
-
-        if exact_match is not None:
-            return exact_match
-
-        name_match = self._registry.get((namespace, name, None))
-        if name_match is not None:
-            self.register(namespace, name, [element_name], name_match)
-            return name_match
-
-        namespace_match = self._registry.get((namespace, None, None))
-        if namespace_match is not None:
-            self.register(namespace, name, [element_name], namespace_match)
-            return namespace_match
-
-        self.register(namespace, name, [element_name], Attribute)
-        return Attribute
 
 class Attribute:
     default_namespace: str | None = None

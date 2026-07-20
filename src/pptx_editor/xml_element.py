@@ -2,11 +2,10 @@ from io import BytesIO
 from typing import TYPE_CHECKING, TypeVar, TypeIs
 from xml.sax.saxutils import escape
 
-import pptx_editor.xml_elements as xml_elements
-
+from pptx_editor import xml_elements
 from pptx_editor.attribute import Attribute
 from pptx_editor.modes.xml_element import AddMode
-from pptx_editor.singleton import SingletonMeta
+from pptx_editor.registries.xml_element import XmlElementRegistry
 
 if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter
@@ -15,16 +14,6 @@ if TYPE_CHECKING:
 
 T = TypeVar('T', bound='XmlElement')
 U = TypeVar('U', bound='Attribute')
-
-class XmlElementRegistry(metaclass=SingletonMeta):
-    def __init__(self):
-        self._registry = {}
-
-    def register(self, namespace: str, name: str, element_cls: type['XmlElement']):
-        self._registry[(namespace, name)] = element_cls
-
-    def get_element_cls(self, namespace: str | None, name: str | None = None) -> type['XmlElement']:
-        return self._registry.get((namespace, name), XmlElement)
 
 class XmlElement:
     default_namespace: str | None = None

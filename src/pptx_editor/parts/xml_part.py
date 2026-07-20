@@ -1,4 +1,3 @@
-from collections import defaultdict
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -41,7 +40,7 @@ class XmlPart(Part):
     @property
     def data(self) -> 'XmlElement':
         if not self._is_data_parsed:
-            data_element, doc_info = self._get_xml()
+            data_element, doc_info = parser._OOXMLParser.parse_part_from_xml(self)
 
             if data_element is None:
                 raise ValueError("Part does not contain data")
@@ -87,75 +86,3 @@ class XmlPart(Part):
 
         if len(self.relationships) > 0:
             self._write_relationships_file(writer)
-
-    def _get_xml(self) -> tuple[etree._Element | None, etree.DocInfo | None]:
-        if self._data is None:
-            return None, None
-
-        context = etree.iterparse(
-            BytesIO(self._data),
-            events=('start-ns', 'end-ns', 'start', 'end'),
-        )
-
-        root_element = None
-        path_stack = []
-        child_stack = []
-        ns_stack = []
-        ns_queue = {}
-
-        ns_map = defaultdict(list)
-
-        for event, value in context:
-
-            if event == "start-ns":
-                prefix, uri = value
-                ns_queue[prefix] = uri
-                ns_map[uri].append(prefix)
-
-            elif event == "start":
-                path_stack.append(value)
-                ns_stack.append(ns_queue)
-                child_stack.append([])
-                ns_queue = {}
-
-            elif event == "end":
-                namespace, prefix, name = self._process_tag(value.tag, ns_map)
-
-                element = path_stack.pop()
-                declared_namespaces = ns_stack.pop()
-                children = tuple(child_stack.pop())
-
-                parsed_attributes = tuple(
-                    parser._OOXMLParser.parse_attribute_from_item(self, element.nsmap, name, str(key), str(value))
-                    for key, value
-                    in element.attrib.items()
-                )
-
-                parsed_element = parser._OOXMLParser.parse_element_from_xml(self, element, parsed_attributes, children, declared_namespaces)
-
-                if len(path_stack) > 0:
-                    child_stack[-1].append(parsed_element)
-                else:
-                    root_element = parsed_element
-
-            elif event == "end-ns":
-                if value is None:
-                    continue
-
-                prefix, uri = value
-                if uri in ns_map and prefix in ns_map[uri]:
-                    ns_map[uri].remove(prefix)
-
-
-        return root_element, context.root.getroottree().docinfo
-
-    @staticmethod
-    def _process_tag(raw_tag, ns_map: dict[str, list[str]]) -> tuple[str | None, str | None, str]:
-        if raw_tag.startswith("{"):
-            uri, tag = raw_tag[1:].split("}", 1)
-            prefixes = ns_map.get(uri)
-            if prefixes:
-                prefix = prefixes[-1]
-                return uri, (prefix if prefix else None), tag
-            return uri, None, tag
-        return None, None, raw_tag
