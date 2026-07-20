@@ -22,12 +22,12 @@ class RelationshipAttribute(Attribute):
     def __init__(self, value: 'str | Relationship', prefix: str | None = None, name: str | None = None, overwrite_prefix: bool = False):
         self.prefix = prefix if prefix or overwrite_prefix else self.default_prefix
         self.name = sys.intern(name) if name else self.default_name
-        self.value: 'str | Relationship' = sys.intern(value) if isinstance(value, str) else value
+        self.value: 'str | Relationship' = value
 
     @classmethod
     def _from_item(cls, part: 'XmlPart', namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipAttribute':
         q = etree.QName(name)
-        namespace = sys.intern(q.namespace) if q.namespace else None
+        namespace = q.namespace
         prefix = [pfx for pfx, uri in namespaces.items() if uri == namespace][0] if namespace is not None else None
         relation_value = cls(value, prefix, q.localname)
 

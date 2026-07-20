@@ -1,18 +1,11 @@
-import sys
-
 from io import BytesIO
 from typing import TYPE_CHECKING, TypeVar, TypeIs
 from xml.sax.saxutils import escape
 
-from lxml import etree
-
 import pptx_editor.xml_elements as xml_elements
-import pptx_editor.parser as parser
 
-from pptx_editor.attributes.relation_attribute import RelationshipAttribute
 from pptx_editor.attribute import Attribute
 from pptx_editor.modes.xml_element import AddMode
-from pptx_editor.relationship import Relationship
 from pptx_editor.singleton import SingletonMeta
 
 if TYPE_CHECKING:
@@ -42,8 +35,8 @@ class XmlElement:
     __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'part', 'namespaces']
 
     def __init__(self, name: str | None = None, prefix: str | None = None, attributes: tuple['Attribute', ...] = (), children: tuple['XmlElement', ...] = (), text: str | None = None, tail: str | None = None, part: 'XmlPart | None' = None, namespaces: dict[str | None, str] | None = None):
-        self.name = sys.intern(name) if name else self.default_name
-        self.prefix = sys.intern(prefix) if prefix else self.default_prefix
+        self.name = name if name else self.default_name
+        self.prefix = prefix if prefix else self.default_prefix
         self.attributes = attributes
         self.children = children
         self.text = text
@@ -201,23 +194,6 @@ class XmlElement:
                 return index
 
         return len(self.default_order)
-
-    @classmethod
-    def _from_xml(cls, part: 'XmlPart', xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None = None):
-        q = etree.QName(xml)
-        name = sys.intern(q.localname)
-        prefix = xml.prefix or None
-        attributes = tuple(parser._OOXMLParser.parse_attribute_from_item(part, xml.nsmap, name, str(key), str(value)) for key, value in xml.attrib.items())
-        children = tuple(parser._OOXMLParser.parse_element_from_xml(part, child, ns_declarations) for child in xml)
-        text = sys.intern(xml.text) if xml.text is not None else xml.text
-        tail = sys.intern(xml.tail) if xml.tail is not None else xml.tail
-        xml_path = xml.getroottree().getpath(xml)
-
-        defined_namespace = []
-        if ns_declarations is not None and xml_path in ns_declarations:
-            defined_namespace = ns_declarations[xml_path].copy()
-
-        return cls(name, prefix, attributes, children, text, tail, part=part, namespaces=defined_namespace)
 
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
         buffer.write('<'.encode('utf-8'))

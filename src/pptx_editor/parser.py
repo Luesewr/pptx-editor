@@ -5,7 +5,7 @@ from typing import IO
 from lxml import etree
 
 import pptx_editor.parts.package as package_part
-from pptx_editor.attribute import AttributeRegistry
+from pptx_editor.attribute import Attribute, AttributeRegistry
 from pptx_editor.content_types import ContentTypes
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part, PartRegistry
@@ -45,14 +45,17 @@ class _OOXMLParser:
         return part
 
     @staticmethod
-    def parse_element_from_xml(part: 'Part', xml: etree._Element, ns_declarations: dict[str, dict[str | None, str]] | None) -> 'XmlElement':
+    def parse_element_from_xml(part: 'Part', xml: etree._Element, attributes: tuple['Attribute'], children: tuple['XmlElement'], ns_declarations: dict[str, dict[str | None, str]] | None) -> 'XmlElement':
         registry = XmlElementRegistry()
         q = etree.QName(xml)
-        namespace = q.namespace if q.namespace else None
+        namespace = q.namespace or None
         name = q.localname
+        prefix = xml.prefix or None
+        text = xml.text or None
+        tail = xml.tail or None
 
         element_cls = registry.get_element_cls(namespace, name)
-        element = element_cls._from_xml(part, xml, ns_declarations)
+        element = element_cls(name, prefix, attributes, children, text, tail, part, ns_declarations)
         return element
 
     @staticmethod

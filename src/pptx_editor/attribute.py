@@ -26,16 +26,23 @@ class AttributeRegistry(metaclass=SingletonMeta):
                 self._registry[(namespace, name, element_name)] = attribute_value_cls
 
     def get_attribute_value_cls(self, namespace: str | None, name: str, element_name: str | None = None) -> type['Attribute']:
-        return self._registry.get(
-            (namespace, name, element_name),
-            self._registry.get(
-                (namespace, name, None),
-                self._registry.get(
-                    (namespace, None, None),
-                    Attribute
-                )
-            )
-        )
+        exact_match = self._registry.get((namespace, name, element_name))
+
+        if exact_match is not None:
+            return exact_match
+
+        name_match = self._registry.get((namespace, name, None))
+        if name_match is not None:
+            self.register(namespace, name, [element_name], name_match)
+            return name_match
+
+        namespace_match = self._registry.get((namespace, None, None))
+        if namespace_match is not None:
+            self.register(namespace, name, [element_name], namespace_match)
+            return namespace_match
+
+        self.register(namespace, name, [element_name], Attribute)
+        return Attribute
 
 class Attribute:
     default_namespace: str | None = None
@@ -47,7 +54,7 @@ class Attribute:
 
     def __init__(self, value: str, prefix: str | None = None, name: str | None = None, overwrite_prefix: bool = False):
         self.prefix = prefix if prefix or overwrite_prefix else self.default_prefix
-        self.name = sys.intern(name) if name else self.default_name
+        self.name = name if name else self.default_name
         self.value = value
 
     def copy(self):
