@@ -13,7 +13,7 @@ from pptx_editor.xml_elements.slide_data import CommonSlideData
 class Slide(XmlPart):
     default_content_type = PresentationML.SLIDE
     default_base_path = PurePosixPath('/ppt/slides')
-    default_part_name = 'slide{i}.xml'
+    default_part_name = 'slide{i}'
 
     @property
     def shapes(self) -> list['AbstractShape']:

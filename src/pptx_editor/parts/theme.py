@@ -9,7 +9,7 @@ from pptx_editor.xml_elements.theme import ThemeElements
 class Theme(XmlPart):
     default_content_type: str | None = PresentationML.THEME
     default_base_path: PurePosixPath | None = PurePosixPath("/ppt/theme")
-    default_part_name: str | None = "theme{i}.xml"
+    default_part_name: str | None = "theme{i}"
 
     def get_color(self, scheme_color: str) -> 'AbstractColor':
         color_scheme_colors = self._theme_elements.color_scheme.colors

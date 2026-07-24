@@ -15,7 +15,7 @@ from pptx_editor.xml_elements.id_list import SlideIdList
 class Presentation(XmlPart):
     default_content_type = PresentationML.PRESENTATION
     default_base_path = PurePosixPath('/ppt')
-    default_part_name = 'presentation.xml'
+    default_part_name = 'presentation'
 
     @property
     def slides(self) -> list['Slide']:
@@ -32,6 +32,9 @@ class Presentation(XmlPart):
             raise PowerpointIntegrityError('The sldIdLst element in the presentation part is not of the expected type.')
 
         return slide_id_list
+
+    def add_slide(self, slide: 'Slide', index: int | None = None) -> None:
+        self._slide_id_list.add_slide(slide, index)
 
     @staticmethod
     def from_zip_file(file: IO):

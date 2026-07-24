@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 class XmlPart(Part):
     default_content_type: str | None = "application/xml"
-    default_base_path: PurePosixPath | None
-    default_part_name: str | None
-    default_attribute_name: str | None = None
+    default_base_path: PurePosixPath | None = None
+    default_part_name: str | None = None
+    default_extension: str | None = 'xml'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -36,6 +36,21 @@ class XmlPart(Part):
 
     def get_elements_by_type(self, element_type: type['XmlElement']) -> list['XmlElement']:
         return self.data.get_elements_by_type(element_type)
+
+    def copy(self):
+        new_part = self.__class__(self.main_part, self._get_file_path(), self.content_type, self.is_default)
+        new_part.relationships = [r.copy(part=new_part) for r in self.relationships]
+
+        data = self.data
+
+        relationship_map = {r: new_r for r, new_r in zip(self.relationships, new_part.relationships)}
+
+        new_part._data = data.copy(part=new_part, relationship_map=relationship_map)
+        new_part.docinfo = self.docinfo
+        new_part._is_data_parsed = self._is_data_parsed
+        new_part.unlock_relationships = self.unlock_relationships
+
+        return new_part
 
     @property
     def data(self) -> 'XmlElement':
@@ -60,7 +75,7 @@ class XmlPart(Part):
         if writer.is_part_written(self):
             return
 
-        file_name = writer.assign_part_index(self.part_name, self)
+        file_name = writer.assign_part_index(self)
         file_path = PurePosixPath(self.base_path) / file_name if self.base_path else file_name
 
         if not file_path.is_absolute():
@@ -77,12 +92,11 @@ class XmlPart(Part):
                 self._data._to_xml(writer, buffer)
             else:
                 buffer.write(self._data)
-                self.relationships.sort(key=lambda r: r.original_id.removeprefix('rId'))
             writer.write_file(file_path, buffer.getvalue())
 
-        writer.assign_relation_part_indexes(self.relationships)
-
         writer.add_written_part(self)
+
+        writer.assign_relation_part_indexes(self.relationships)
 
         if len(self.relationships) > 0:
             self._write_relationships_file(writer)

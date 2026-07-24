@@ -15,13 +15,28 @@ if TYPE_CHECKING:
     from pptx_editor.writer import _OOXMLWriter
 
 class Relationship:
-    __slots__ = ['target_type', 'target', 'origin', 'original_id']
+    __slots__ = ['target_type', 'target', 'origin', 'original_id', 'explicit']
 
-    def __init__(self, target_type: str, target: 'Part', origin: 'Part', original_id: str):
-        self.target_type = sys.intern(target_type)
+    def __init__(self, target_type: str, target: 'Part', origin: 'Part', original_id: str | None = None):
+        self.target_type = target_type
         self.target = target
         self.origin = origin
         self.original_id = original_id
+        self.explicit = False
+
+    def copy(self, part: 'Part | None' = None) -> 'Relationship':
+        if self.explicit and not self.is_external():
+            target = self.target.copy()
+        else:
+            target = self.target
+
+        new_relationship = self.__class__(self.target_type, target, self.origin if part is None else part, self.original_id)
+        new_relationship.explicit = self.explicit
+
+        return new_relationship
+
+    def is_external(self) -> bool:
+        return False
 
     @classmethod
     def _from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, origin: 'Part'):
@@ -73,11 +88,8 @@ class Relationship:
 
         return cls(target_type, target, origin, relationship_id)
 
-    def is_external(self) -> bool:
-        return isinstance(self, ExternalRelationship)
-
     def _to_xml(self, writer: '_OOXMLWriter', buffer: BytesIO):
-        target_file_name = writer.assign_part_index(self.target.part_name, self.target)
+        target_file_name = writer.assign_part_index(self.target)
         target_location = PurePosixPath(self.target.base_path) / target_file_name if self.target.base_path else PurePosixPath(target_file_name)
         relative_target_path = posixpath.relpath(target_location.as_posix(), start=(self.origin.base_path or PurePosixPath('/')).as_posix())
 
@@ -123,6 +135,12 @@ class Relationship:
 
         return 1 if a_name > b_name else (-1 if a_name < b_name else 0)
 
+    def __eq__(self, other: object) -> bool:
+        return self is other
+
+    def __hash__(self) -> int:
+        return id(self)
+
 class ExternalRelationship(Relationship):
     __slots__ = ['target_type', 'target', 'origin', 'original_id']
 
@@ -133,3 +151,6 @@ class ExternalRelationship(Relationship):
         relationship_id = writer.assign_relationship_id(self.origin, self)
 
         buffer.write(f'<Relationship Id="{relationship_id}" Type="{self.target_type}" Target="{self.target}" TargetMode="External"/>'.encode('utf-8'))
+
+    def is_external(self) -> bool:
+        return True

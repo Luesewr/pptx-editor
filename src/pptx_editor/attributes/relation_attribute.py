@@ -17,12 +17,18 @@ class RelationshipAttribute(Attribute):
     default_namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
     default_prefix = 'r'
     default_name = None
-    default_element_name = None
+    default_element_names = None
 
     def __init__(self, value: 'str | Relationship', prefix: str | None = None, name: str | None = None, overwrite_prefix: bool = False):
-        self.prefix = prefix if prefix or overwrite_prefix else self.default_prefix
-        self.name = sys.intern(name) if name else self.default_name
-        self.value: 'str | Relationship' = value
+        super().__init__(value, prefix, name, overwrite_prefix)
+        self.value: 'str | Relationship'
+
+    def copy(self, part: 'XmlPart | None' = None, relationship_map: dict | None = None) -> 'RelationshipAttribute':
+        if part is not None and isinstance(self.value, Relationship) and relationship_map is not None:
+            new_relationship = relationship_map.get(self.value)
+            if new_relationship is not None:
+                return self.__class__(new_relationship, self.prefix, self.name, overwrite_prefix=True)
+        return self.__class__(self.value, self.prefix, self.name, overwrite_prefix=True)
 
     @classmethod
     def _from_item(cls, part: 'XmlPart', namespaces: dict[str | None, str], name: str, value: str) -> 'RelationshipAttribute':
@@ -41,6 +47,10 @@ class RelationshipAttribute(Attribute):
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{escaped_value}"'.encode('utf-8'))
         else:
             relationship_id = writer.assign_relationship_id(self.value.origin, self.value)
+
+            if not self.value.is_external():
+                writer.assign_part_index(self.value.target)
+
             escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
             buffer.write(f' {self.prefix + ":" if self.prefix else ""}{self.name}="{escaped_relationship_id}"'.encode('utf-8'))
 
@@ -54,6 +64,8 @@ class RelationshipAttribute(Attribute):
             escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
             print(f"Integrity warning: No relationship found with id {escaped_relationship_id} in part {part.part_name}")
             return
+
+        relationship.explicit = True
 
         self.value = relationship
 

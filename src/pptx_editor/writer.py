@@ -41,7 +41,11 @@ class _OOXMLWriter:
         if relationship in self.reverse_relationship_id_lookup[part]:
             return self.reverse_relationship_id_lookup[part][relationship]
 
-        relationship_id = f"rId{len(self.relationship_id_lookup[part]) + 1}"
+        if part.unlock_relationships:
+            relationship_id = f"rId{len(self.relationship_id_lookup[part]) + 1}"
+        else:
+            relationship_id = relationship.original_id
+
         self.relationship_id_lookup[part][relationship_id] = relationship
         self.reverse_relationship_id_lookup[part][relationship] = relationship_id
 
@@ -54,24 +58,24 @@ class _OOXMLWriter:
             if relationship.is_external():
                 continue
 
-            target_part = relationship.target
+            self.assign_part_index(relationship.target)
 
-            part_name = target_part.part_name if target_part.part_name else target_part.default_part_name
+    def assign_part_index(self, part: 'Part') -> PurePosixPath:
+        part_name = part.part_name if part.part_name else part.default_part_name
+        part_extension = part.extension if part.extension else part.default_extension
+        full_part_name = f"{part_name}.{part_extension}" if part_extension else part_name
 
-            self.assign_part_index(part_name, target_part)
-
-    def assign_part_index(self, part_name: str | None, part: 'Part') -> PurePosixPath:
         if part_name is not None and part in self.part_index_lookup[part_name]:
             return PurePosixPath(self.part_index_lookup[part_name][part])
 
         if part_name is None:
             return PurePosixPath('')
 
-        if '{i}' not in part_name:
-            file_name = PurePosixPath(part_name)
+        if '{i}' not in full_part_name:
+            file_name = PurePosixPath(full_part_name)
         else:
             index = len(self.part_index_lookup[part_name]) + 1
-            indexed_part_name = part_name.format(i=index)
+            indexed_part_name = full_part_name.format(i=index)
 
             self.part_index_lookup[part_name][part] = indexed_part_name
             self.reverse_part_index_lookup[part_name][indexed_part_name] = part

@@ -1,7 +1,7 @@
-from io import BytesIO
 import re
 import sys
 
+from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
@@ -16,7 +16,7 @@ class Part():
     default_content_type: str | None = None
     default_base_path: PurePosixPath | None = None
     default_part_name: str | None = None
-    default_attribute_name: str | None = None
+    default_extension: str | None = None
 
     def __init__(self, main_part: 'Part', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
         self.main_part = main_part
@@ -26,12 +26,14 @@ class Part():
         if file_path is None:
             self.base_path: PurePosixPath | None = self.default_base_path if self.default_base_path else None
             self.part_name: str | None = sys.intern(self.default_part_name) if self.default_part_name else None
+            self.extension: str | None = sys.intern(self.default_extension) if self.default_extension else None
         else:
             self.base_path: PurePosixPath | None = file_path.parent
-            self.part_name: str | None = sys.intern(file_path.name)
+            self.part_name: str | None = file_path.stem
+            self.extension: str | None = file_path.suffix.lstrip('.') if file_path.suffix else None
 
-        if self.part_name and (m := re.match(r'(^.*?)\d+(\.xml)$', self.part_name)):
-            self.part_name: str | None = sys.intern(m.group(1) + '{i}' + m.group(2))
+        if self.part_name and (m := re.match(r'(^.*?)\d+$', self.part_name)):
+            self.part_name: str | None = sys.intern(m.group(1) + '{i}')
 
         self.relationships: list[Relationship] = []
         self._data: Any | None = None
@@ -60,6 +62,19 @@ class Part():
                 return relationship
         return None
 
+    def add_relationship(self, relationship: 'Relationship'):
+        self.relationships.append(relationship)
+
+    def copy(self):
+        new_part = self.__class__(self.main_part, self._get_file_path(), self.content_type, self.is_default)
+        new_part._data = self._data
+        new_part.relationships = [r.copy() for r in self.relationships]
+
+        for relationship in new_part.relationships:
+            relationship.origin = new_part
+
+        return new_part
+
     @classmethod
     def _from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, content_type: str | None, is_default: bool = False) -> 'Part':
         if file_path and (part := parser.get_part(file_path)):
@@ -78,7 +93,7 @@ class Part():
         if writer.is_part_written(self) or self.part_name is None:
             return
 
-        file_name = writer.assign_part_index(self.part_name, self)
+        file_name = writer.assign_part_index(self)
 
         file_path = PurePosixPath(self.base_path) / file_name if self.base_path else file_name
 
@@ -104,10 +119,12 @@ class Part():
     def _get_file_path(self) -> PurePosixPath | None:
         file_path = None
 
+        full_part_name = f"{self.part_name}.{self.extension}" if self.extension and self.part_name else self.part_name
+
         if self.base_path and self.part_name is not None:
-            file_path = PurePosixPath(self.base_path) / self.part_name
+            file_path = PurePosixPath(self.base_path) / full_part_name
         elif self.part_name is not None:
-            file_path = PurePosixPath(self.part_name)
+            file_path = PurePosixPath(full_part_name)
 
         if file_path is not None and not file_path.is_absolute():
             file_path = PurePosixPath('/') / file_path
@@ -117,7 +134,7 @@ class Part():
     def _parse_relationships(self, parser: '_OOXMLParser', file_path: PurePosixPath):
         relationship_file_path = self._get_relationship_file_path(file_path=file_path)
         relationships = Relationship._from_file(parser, relationship_file_path, self)
-        self.relationships = relationships
+        self.relationships = sorted(relationships, key=lambda r: int(r.original_id.removeprefix('rId')))
 
     def _get_relationship_file_path(self, file_path: PurePosixPath) -> PurePosixPath:
         file_path = (self._get_file_path() if file_path is None else file_path) or PurePosixPath('')
@@ -150,7 +167,7 @@ class Part():
 
         buffer.write('</Relationships>'.encode('utf-8'))
 
-        file_name = writer.assign_part_index(self.part_name, self)
+        file_name = writer.assign_part_index(self)
 
         file_path = PurePosixPath(self.base_path) / PurePosixPath(file_name) if self.base_path else PurePosixPath(file_name)
 
@@ -190,6 +207,12 @@ class Part():
 
         if cls.__name__ == 'XmlPart':
             cls._register()
+
+    def __eq__(self, other: object) -> bool:
+        return self is other
+
+    def __hash__(self) -> int:
+        return id(self)
 
     def __str__(self) -> str:
         return f"{(self.default_content_type or 'package').rsplit('.', maxsplit=1)[-1].removesuffix('+xml')}(file_path={self._get_file_path()})"

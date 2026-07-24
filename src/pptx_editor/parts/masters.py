@@ -43,10 +43,10 @@ class NotesMaster(AbstractMaster):
     """Represents a NotesMaster part in a PowerPoint presentation."""
     default_content_type = PresentationML.NOTES_MASTER
     default_base_path = PurePosixPath('/ppt/notesMasters')
-    default_part_name = 'notesMaster{i}.xml'
+    default_part_name = 'notesMaster{i}'
 
 class SlideMaster(AbstractMaster):
     """Represents a SlideMaster part in a PowerPoint presentation."""
     default_content_type = PresentationML.SLIDE_MASTER
     default_base_path = PurePosixPath('/ppt/slideMasters')
-    default_part_name = 'slideMaster{i}.xml'
+    default_part_name = 'slideMaster{i}'

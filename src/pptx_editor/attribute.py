@@ -16,7 +16,7 @@ class Attribute:
     default_namespace: str | None = None
     default_prefix: str | None = None
     default_name: str | None = None
-    default_element_name: str | None = None
+    default_element_names: list[str] | None = None
 
     __slots__ = ['name', 'value', 'prefix']
 
@@ -25,7 +25,7 @@ class Attribute:
         self.name = name if name else self.default_name
         self.value = value
 
-    def copy(self):
+    def copy(self, part: 'XmlPart | None' = None, relationship_map: dict | None = None) -> 'Attribute':
         return self.__class__(self.value, self.prefix, self.name, overwrite_prefix=True)
 
     @classmethod
@@ -50,7 +50,7 @@ class Attribute:
     def _register(cls):
         registry = AttributeRegistry()
 
-        registry.register(cls.default_namespace, cls.default_name, cls.default_element_name, cls)
+        registry.register(cls.default_namespace, cls.default_name, cls.default_element_names, cls)
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -59,7 +59,7 @@ class Attribute:
         missing_namespace = not hasattr(cls, 'default_namespace')
         missing_prefix = not hasattr(cls, 'default_prefix')
         missing_name = not hasattr(cls, 'default_name')
-        missing_element_name = not hasattr(cls, 'default_element_name')
+        missing_element_name = not hasattr(cls, 'default_element_names')
 
         if cls.__name__ not in class_exceptions and missing_namespace:
             raise ValueError(f"Attribute subclass {cls.__name__} must define a default_namespace class attribute")
@@ -68,7 +68,7 @@ class Attribute:
         if cls.__name__ not in class_exceptions and missing_name:
             raise ValueError(f"Attribute subclass {cls.__name__} must define a default_name class attribute")
         if cls.__name__ not in class_exceptions and missing_element_name:
-            raise ValueError(f"Attribute subclass {cls.__name__} must define a default_element_name class attribute")
+            raise ValueError(f"Attribute subclass {cls.__name__} must define a default_element_names class attribute")
 
         if cls.__name__ not in class_exceptions:
             cls._register()

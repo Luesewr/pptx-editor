@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class SlideLayout(XmlPart):
     default_content_type = PresentationML.SLIDE_LAYOUT
     default_base_path = PurePosixPath('/ppt/slideLayouts')
-    default_part_name = 'slideLayout{i}.xml'
+    default_part_name = 'slideLayout{i}'
 
     @property
     def slide_master(self) -> 'SlideMaster':

@@ -119,10 +119,11 @@ class XmlElement:
 
         self.attributes = (*self.attributes[:index], *self.attributes[index + 1:])
 
-    def copy(self):
-        copied_attributes = tuple(value.copy() for value in self.attributes)
-        copied_children = tuple(child.copy() for child in self.children)
-        return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, self.part, self.namespaces.copy() if self.namespaces is not None else None)
+    def copy(self, part: 'XmlPart | None' = None, relationship_map: dict | None = None):
+        copied_attributes = tuple(value.copy(part=part, relationship_map=relationship_map) for value in self.attributes)
+        copied_children = tuple(child.copy(part=part, relationship_map=relationship_map) for child in self.children)
+
+        return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, part if part is not None else self.part, self.namespaces.copy() if self.namespaces is not None else None)
 
     def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
@@ -198,8 +199,8 @@ class XmlElement:
             else:
                 buffer.write(f' xmlns="{uri}"'.encode('utf-8'))
 
-        for value in self.attributes:
-            value._to_xml(writer, buffer)
+        for attribute in self.attributes:
+            attribute._to_xml(writer, buffer)
 
         if not self.children and self.text is None:
             buffer.write('/>'.encode('utf-8'))
@@ -212,8 +213,8 @@ class XmlElement:
         if self.text is not None:
             buffer.write(escape(self.text).encode('utf-8'))
 
-        for attribute in self.children:
-            attribute._to_xml(writer, buffer)
+        for element in self.children:
+            element._to_xml(writer, buffer)
 
         if self.tail is not None:
             buffer.write(escape(self.tail).encode('utf-8'))

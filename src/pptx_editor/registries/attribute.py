@@ -26,12 +26,9 @@ class AttributeRegistry(metaclass=SingletonMeta):
 
         namespace_match = self._registry.get((namespace, None, None))
         if namespace_match is not None:
-            self.register(namespace, name, None, namespace_match)
             self.register(namespace, name, [element_name], namespace_match)
             return namespace_match
 
         self.register(namespace, name, [element_name], attribute.Attribute)
-        self.register(namespace, name, None, attribute.Attribute)
-        self.register(namespace, None, None, attribute.Attribute)
 
         return attribute.Attribute
