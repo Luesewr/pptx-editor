@@ -34,7 +34,8 @@ class Part():
             self.extension: str | None = file_path.suffix.lstrip('.') if file_path.suffix else None
 
         if self.part_name and (m := re.match(r'(^.*?)\d+$', self.part_name)):
-            self.part_name: str | None = sys.intern(m.group(1) + '{i}')
+            suffix = '{i}' if self.default_part_name is None or '{i}' in self.default_part_name else ''
+            self.part_name: str | None = sys.intern(m.group(1) + suffix)
 
         self.relationships: list[Relationship] = []
         self._data: Any | None = None
