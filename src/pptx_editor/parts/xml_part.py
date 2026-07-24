@@ -38,10 +38,10 @@ class XmlPart(Part):
         return self.data.get_elements_by_type(element_type)
 
     def copy(self):
+        data = self.data
+
         new_part = self.__class__(self.main_part, self._get_file_path(), self.content_type, self.is_default)
         new_part.relationships = [r.copy(part=new_part) for r in self.relationships]
-
-        data = self.data
 
         relationship_map = {r: new_r for r, new_r in zip(self.relationships, new_part.relationships)}
 

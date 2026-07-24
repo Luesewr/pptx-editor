@@ -1,7 +1,5 @@
 from io import BytesIO
-from pathlib import PurePosixPath
 from xml.sax.saxutils import escape
-import sys
 
 from lxml import etree
 from typing import TYPE_CHECKING
@@ -64,8 +62,6 @@ class RelationshipAttribute(Attribute):
             escaped_relationship_id = escape(relationship_id, entities={'"': '&quot;', "'": '&apos;', '\n': '&#10;', '\r': '&#13;', '\t': '&#9;'})
             print(f"Integrity warning: No relationship found with id {escaped_relationship_id} in part {part.part_name}")
             return
-
-        relationship.explicit = True
 
         self.value = relationship
 

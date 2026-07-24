@@ -22,16 +22,14 @@ class Relationship:
         self.target = target
         self.origin = origin
         self.original_id = original_id
-        self.explicit = False
 
     def copy(self, part: 'Part | None' = None) -> 'Relationship':
-        if self.explicit and not self.is_external():
+        if not self.is_external() and not self.target.shared:
             target = self.target.copy()
         else:
             target = self.target
 
         new_relationship = self.__class__(self.target_type, target, self.origin if part is None else part, self.original_id)
-        new_relationship.explicit = self.explicit
 
         return new_relationship
 

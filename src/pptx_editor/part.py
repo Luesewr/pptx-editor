@@ -17,6 +17,7 @@ class Part():
     default_base_path: PurePosixPath | None = None
     default_part_name: str | None = None
     default_extension: str | None = None
+    default_shared: bool = False
 
     def __init__(self, main_part: 'Part', file_path: PurePosixPath | None = None, content_type: str | None = None, is_default: bool = False):
         self.main_part = main_part
@@ -45,6 +46,8 @@ class Part():
             self.content_type: str | None = sys.intern(content_type)
         elif self.default_content_type is not None:
             self.content_type: str | None = sys.intern(self.default_content_type)
+
+        self.shared = self.default_shared
 
         self.is_default = is_default
 

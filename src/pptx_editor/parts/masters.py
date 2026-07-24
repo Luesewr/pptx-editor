@@ -8,6 +8,7 @@ from pptx_editor.xml_elements.color import ColorMap
 
 class AbstractMaster(XmlPart):
     """Base class for SlideMaster and NotesMaster."""
+    default_shared: bool = True
     is_abstract = True
 
     @property

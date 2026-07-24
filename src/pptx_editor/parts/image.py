@@ -6,6 +6,7 @@ from pptx_editor.part import Part
 class ImagePart(Part):
     default_base_path: PurePosixPath | None = PurePosixPath('/ppt/media')
     default_part_name: str | None = 'image{i}'
+    default_shared: bool = True
     is_abstract: bool = True
 
     def __init_subclass__(cls, **kwargs):

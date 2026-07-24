@@ -10,6 +10,7 @@ class Theme(XmlPart):
     default_content_type: str | None = PresentationML.THEME
     default_base_path: PurePosixPath | None = PurePosixPath("/ppt/theme")
     default_part_name: str | None = "theme{i}"
+    default_shared: bool = True
 
     def get_color(self, scheme_color: str) -> 'AbstractColor':
         color_scheme_colors = self._theme_elements.color_scheme.colors

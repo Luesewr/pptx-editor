@@ -13,6 +13,7 @@ class SlideLayout(XmlPart):
     default_content_type = PresentationML.SLIDE_LAYOUT
     default_base_path = PurePosixPath('/ppt/slideLayouts')
     default_part_name = 'slideLayout{i}'
+    default_shared: bool = True
 
     @property
     def slide_master(self) -> 'SlideMaster':

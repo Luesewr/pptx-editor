@@ -71,16 +71,17 @@ class _OOXMLWriter:
         if part_name is None:
             return PurePosixPath('')
 
-        if '{i}' not in full_part_name:
-            file_name = PurePosixPath(full_part_name)
+        index = len(self.part_index_lookup[part_name])
+
+        if '{i}' in full_part_name:
+            indexed_part_name = full_part_name.format(i=index + 1)
         else:
-            index = len(self.part_index_lookup[part_name]) + 1
-            indexed_part_name = full_part_name.format(i=index)
+            indexed_part_name = f"{part_name}{index if index > 0 else ''}{'.' + part_extension if part_extension else ''}"
 
-            self.part_index_lookup[part_name][part] = indexed_part_name
-            self.reverse_part_index_lookup[part_name][indexed_part_name] = part
+        self.part_index_lookup[part_name][part] = indexed_part_name
+        self.reverse_part_index_lookup[part_name][indexed_part_name] = part
 
-            file_name = PurePosixPath(indexed_part_name)
+        file_name = PurePosixPath(indexed_part_name)
 
         file_path = PurePosixPath(part.base_path) / file_name if part.base_path else file_name
 
