@@ -54,11 +54,31 @@ class Part():
 
         self.relationships: list[Relationship] = []
 
-    def get_related_part(self, part_cls: type['Part']) -> 'Part | None':
+    def get_related_part_by_type(self, part_type: type['Part']) -> 'Part | None':
         for relationship in self.relationships:
-            if isinstance(relationship.target, part_cls):
+            if isinstance(relationship.target, part_type):
                 return relationship.target
         return None
+
+    def replace_related_part(self, old_part: 'Part', new_part: 'Part'):
+        for relationship in self.relationships:
+            if relationship.target is old_part:
+                relationship.target = new_part
+                return
+
+        raise ValueError(f"Related part {old_part} not found in {self}.")
+
+    def remove_related_part(self, part: 'Part'):
+        for relationship in self.relationships:
+            if relationship.target is part:
+                self.relationships.remove(relationship)
+                return
+
+        raise ValueError(f"Related part {part} not found in {self}.")
+
+    def add_related_part(self, part: 'Part', target_type: str):
+        relationship = Relationship(target_type, part, self)
+        self.relationships.append(relationship)
 
     def get_relationship(self, original_relationship_id: str) -> 'Relationship | None':
         for relationship in self.relationships:
@@ -78,6 +98,16 @@ class Part():
             relationship.origin = new_part
 
         return new_part
+
+    def update_main_part_recursive(self, new_main_part: 'Part'):
+        if self.main_part is new_main_part:
+            return
+
+        self.main_part = new_main_part
+
+        for relationship in self.relationships:
+            if not relationship.is_external():
+                relationship.target.update_main_part_recursive(new_main_part)
 
     @classmethod
     def _from_file(cls, parser: '_OOXMLParser', file_path: PurePosixPath, content_type: str | None, is_default: bool = False) -> 'Part':

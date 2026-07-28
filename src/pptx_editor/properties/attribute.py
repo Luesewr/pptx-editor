@@ -69,6 +69,12 @@ class RequiredStringAttributeProperty(StringAttributeProperty[T]):
     def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> str:
         return super().__get__(instance, owner, nullable_override=bool(nullable_override))
 
+    def __set__(self, instance: 'XmlElement', value: str | None) -> None:
+        if value is None:
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable RequiredStringAttributeProperty to None in {instance.__class__.__name__}.")
+
+        super().__set__(instance, value)
+
 class IntegerAttributeProperty(AttributeProperty[T]):
     def __init__(self, attribute_type: type[T], nullable: bool = True, scalar: int | float = 1):
         super().__init__(attribute_type, nullable)

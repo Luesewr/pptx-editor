@@ -5,6 +5,7 @@ from pptx_editor.content_type.presentationml import PresentationML
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.masters import SlideMaster
 from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.properties.part import RequiredRelatedPartProperty
 
 if TYPE_CHECKING:
     from pptx_editor.parts.theme import Theme
@@ -15,15 +16,7 @@ class SlideLayout(XmlPart):
     default_part_name = 'slideLayout{i}'
     default_shared: bool = True
 
-    @property
-    def slide_master(self) -> 'SlideMaster':
-        """Get the SlideMaster associated with this SlideLayout."""
-        slide_master_part = self.get_related_part(SlideMaster)
-
-        if slide_master_part is None:
-            raise PowerpointIntegrityError("SlideLayout does not have an associated SlideMaster.")
-
-        return slide_master_part
+    slide_master = RequiredRelatedPartProperty(SlideMaster, target_type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster')
 
     @property
     def theme(self) -> 'Theme':

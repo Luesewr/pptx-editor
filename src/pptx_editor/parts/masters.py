@@ -4,6 +4,7 @@ from pptx_editor.content_type.presentationml import PresentationML
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.xml_part import XmlPart
 from pptx_editor.parts.theme import Theme
+from pptx_editor.properties.part import RequiredRelatedPartProperty
 from pptx_editor.xml_elements.color import ColorMap
 
 class AbstractMaster(XmlPart):
@@ -11,15 +12,7 @@ class AbstractMaster(XmlPart):
     default_shared: bool = True
     is_abstract = True
 
-    @property
-    def theme(self) -> 'Theme':
-        """Get the Theme associated with this Master."""
-        theme_part = self.get_related_part(Theme)
-
-        if theme_part is None:
-            raise PowerpointIntegrityError("Master does not have an associated Theme.")
-
-        return theme_part
+    theme = RequiredRelatedPartProperty(Theme, target_type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme')
 
     @property
     def color_map(self) -> dict[str, str]:

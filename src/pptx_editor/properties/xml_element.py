@@ -56,3 +56,9 @@ class RequiredXmlElementProperty(XmlElementProperty[T]):
             return self
 
         return self.get(instance, nullable_override=bool(nullable_override))
+
+    def __set__(self, instance: 'XmlElement', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
+        if value is None:
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable RequiredXmlElementProperty to None in {instance.__class__.__name__}.")
+
+        self.set(instance, value, add_mode=add_mode)

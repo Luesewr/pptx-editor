@@ -5,6 +5,7 @@ from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.slide_layout import SlideLayout
 from pptx_editor.parts.theme import Theme
 from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.properties.part import RequiredRelatedPartProperty
 from pptx_editor.xml_elements.color import ColorMapOverride, MasterColorMapping, OverrideColorMapping
 from pptx_editor.xml_elements.shape import AbstractShape
 from pptx_editor.xml_elements.slide_data import CommonSlideData
@@ -15,19 +16,11 @@ class Slide(XmlPart):
     default_base_path = PurePosixPath('/ppt/slides')
     default_part_name = 'slide{i}'
 
+    slide_layout = RequiredRelatedPartProperty(SlideLayout, target_type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout')
+
     @property
     def shapes(self) -> list['AbstractShape']:
         return self._common_slide_data.shapes
-
-    @property
-    def slide_layout(self) -> 'SlideLayout':
-        """Get the SlideLayout associated with this Slide."""
-        slide_layout_part = self.get_related_part(SlideLayout)
-
-        if slide_layout_part is None:
-            raise PowerpointIntegrityError("Slide does not have an associated SlideLayout.")
-
-        return slide_layout_part
 
     @property
     def theme(self) -> 'Theme':
