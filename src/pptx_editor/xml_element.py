@@ -68,12 +68,12 @@ class XmlElement:
             self.add_element(element, index=index)
             self.sort_children()
 
-    def replace_element(self, old_element: T, new_element: T) -> None:
+    def replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement') -> None:
         index = self.index_of_element(old_element)
 
         self.children = (*self.children[:index], new_element, *self.children[index + 1:])
 
-    def auto_replace_element(self, old_element: T, new_element: T, add_mode: AddMode = AddMode.SORT) -> None:
+    def auto_replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement', add_mode: AddMode = AddMode.SORT) -> None:
         index = self.index_of_element(old_element)
 
         self.children = (*self.children[:index], new_element, *self.children[index + 1:])

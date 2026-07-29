@@ -21,6 +21,10 @@ class Presentation(XmlPart):
     def slides(self) -> list['Slide']:
         return self._slide_id_list.slides
 
+    @slides.setter
+    def slides(self, value: list['Slide']) -> None:
+        self._slide_id_list.slides = value
+
     @property
     def _slide_id_list(self) -> 'SlideIdList':
         slide_id_list = self.get_element_by_type(SlideIdList)
