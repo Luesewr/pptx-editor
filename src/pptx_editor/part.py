@@ -89,6 +89,12 @@ class Part():
     def add_relationship(self, relationship: 'Relationship'):
         self.relationships.append(relationship)
 
+    def remove_relationship(self, relationship: 'Relationship'):
+        if relationship in self.relationships:
+            self.relationships.remove(relationship)
+        else:
+            raise ValueError(f"Relationship {relationship} not found in {self}.")
+
     def copy(self):
         new_part = self.__class__(self.main_part, self._get_file_path(), self.content_type, self.is_default)
         new_part._data = self._data

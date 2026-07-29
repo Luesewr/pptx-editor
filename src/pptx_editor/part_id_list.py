@@ -58,7 +58,9 @@ class PartIdList(MutableSequence[T]):
 
     def __delitem__(self, index: int) -> None:
         element = self.element.children[index]
+        relationship = element.get_attribute_by_type(RelationshipAttribute).value
         self.element.remove_element(element)
+        self.element.part.remove_relationship(relationship)
 
     def insert(self, index: int, value: T) -> None:
         relationship_type = self.element.relationship_type
