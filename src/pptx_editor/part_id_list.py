@@ -31,15 +31,30 @@ class PartIdList(MutableSequence[T]):
             id_element = self.element.children[index]
             relationship_attribute = id_element.get_attribute_by_type(RelationshipAttribute)
             return relationship_attribute.value.target
-        elif isinstance(index, slice):
+
+        if isinstance(index, slice):
             return [self[i] for i in range(*index.indices(len(self)))]
+
+        raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
+
+    @overload
+    def __setitem__(self, index: int, value: T) -> None: ...
+
+    @overload
+    def __setitem__(self, index: slice, value: list[T]) -> None: ...
+
+    def __setitem__(self, index: int | slice, value: T | list[T]) -> None:
+        if isinstance(index, int):
+            id_element = self.element.children[index]
+            relationship_attribute = id_element.get_attribute_by_type(RelationshipAttribute)
+            relationship_attribute.value.target = value
+        elif isinstance(index, slice):
+            if not isinstance(value, list):
+                raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
+            for i, v in zip(range(*index.indices(len(self))), value):
+                self[i] = v
         else:
             raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
-
-    def __setitem__(self, index: int, value: T) -> None:
-        id_element = self.element.children[index]
-        relationship_attribute = id_element.get_attribute_by_type(RelationshipAttribute)
-        relationship_attribute.value.target = value
 
     def __delitem__(self, index: int) -> None:
         element = self.element.children[index]
