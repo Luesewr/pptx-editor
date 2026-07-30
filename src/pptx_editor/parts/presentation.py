@@ -1,21 +1,27 @@
 from io import BytesIO
 from pathlib import PurePosixPath
-from typing import IO, TYPE_CHECKING
+from typing import IO
 from zipfile import ZipFile, ZIP_DEFLATED
 
 import pptx_editor.parser
 import pptx_editor.writer
 
 from pptx_editor.content_type.presentationml import PresentationML
-from pptx_editor.exceptions import PowerpointIntegrityError
-from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.parts.masters import NotesMaster, SlideMaster
 from pptx_editor.parts.slide import Slide
-from pptx_editor.xml_elements.id_list import SlideIdList
+from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.properties.xml_element import RequiredXmlElementProperty
+from pptx_editor.xml_elements.presentation import SlideMasterIdList, NotesMasterIdList, SlideIdList
+
 
 class Presentation(XmlPart):
     default_content_type = PresentationML.PRESENTATION
     default_base_path = PurePosixPath('/ppt')
     default_part_name = 'presentation'
+
+    _slide_master_id_list = RequiredXmlElementProperty(SlideMasterIdList)
+    _notes_master_id_list = RequiredXmlElementProperty(NotesMasterIdList)
+    _slide_id_list = RequiredXmlElementProperty(SlideIdList)
 
     @property
     def slides(self) -> list['Slide']:
@@ -26,19 +32,20 @@ class Presentation(XmlPart):
         self._slide_id_list.slides = value
 
     @property
-    def _slide_id_list(self) -> 'SlideIdList':
-        slide_id_list = self.get_element_by_type(SlideIdList)
+    def slide_masters(self) -> list['SlideMaster']:
+        return self._slide_master_id_list.slide_masters
 
-        if slide_id_list is None:
-            raise PowerpointIntegrityError('The presentation part is missing the required sldIdLst element.')
+    @slide_masters.setter
+    def slide_masters(self, value: list['SlideMaster']) -> None:
+        self._slide_master_id_list.slide_masters = value
 
-        if not isinstance(slide_id_list, SlideIdList):
-            raise PowerpointIntegrityError('The sldIdLst element in the presentation part is not of the expected type.')
+    @property
+    def notes_masters(self) -> list['NotesMaster']:
+        return self._notes_master_id_list.notes_masters
 
-        return slide_id_list
-
-    def add_slide(self, slide: 'Slide', index: int | None = None) -> None:
-        self._slide_id_list.add_slide(slide, index)
+    @notes_masters.setter
+    def notes_masters(self, value: list['NotesMaster']) -> None:
+        self._notes_master_id_list.notes_masters = value
 
     @staticmethod
     def from_zip_file(file: IO):

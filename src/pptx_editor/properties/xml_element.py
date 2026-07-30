@@ -1,5 +1,7 @@
 from typing import TypeVar, Generic
 
+from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.registries.xml_element import XmlElementRegistry
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.modes.xml_element import AddMode
 from pptx_editor.xml_elements.null import NullElement
@@ -8,11 +10,18 @@ from pptx_editor.exceptions import PowerpointIntegrityError
 T = TypeVar('T', bound='XmlElement')
 
 class XmlElementProperty(Generic[T]):
-    def __init__(self, element_type: type[T], nullable: bool = True):
-        self.element_type = element_type
+    def __init__(self, element_type: type[T] | str, nullable: bool = True):
+        self._registry = XmlElementRegistry()
+        self._element_type = element_type
         self.nullable = nullable
 
-    def get(self, instance: 'XmlElement', *, nullable_override: bool | None = None) -> T | NullElement[T]:
+    @property
+    def element_type(self) -> type[T]:
+        if isinstance(self._element_type, str):
+            self._element_type = self._registry.get_element_cls_by_name(self._element_type)
+        return self._element_type
+
+    def get(self, instance: 'XmlElement | XmlPart', *, nullable_override: bool | None = None) -> T | NullElement[T]:
         child_element = instance.get_element_by_type(self.element_type)
 
         if child_element is not None:
@@ -23,7 +32,7 @@ class XmlElementProperty(Generic[T]):
 
         return NullElement(self.element_type, parent=instance)
 
-    def set(self, instance: 'XmlElement', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
+    def set(self, instance: 'XmlElement | XmlPart', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
         existing_element = self.get(instance, nullable_override=True)
 
         if value is None and not self.nullable:
@@ -41,23 +50,23 @@ class XmlElementProperty(Generic[T]):
         elif value is not None:
             instance.auto_add_element(value, add_mode=add_mode)
 
-    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> T | NullElement[T]:
+    def __get__(self, instance: 'XmlElement | XmlPart | None', owner: type['XmlElement | XmlPart'], nullable_override: bool | None = None) -> T | NullElement[T]:
         return self.get(instance, nullable_override=nullable_override)
 
-    def __set__(self, instance: 'XmlElement', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
+    def __set__(self, instance: 'XmlElement | XmlPart', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
         self.set(instance, value, add_mode=add_mode)
 
 class RequiredXmlElementProperty(XmlElementProperty[T]):
-    def __init__(self, element_type: type[T]):
+    def __init__(self, element_type: type[T] | str):
         super().__init__(element_type, nullable=False)
 
-    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> T:
+    def __get__(self, instance: 'XmlElement | XmlPart | None', owner: type['XmlElement | XmlPart'], nullable_override: bool | None = None) -> T:
         if instance is None:
             return self
 
         return self.get(instance, nullable_override=bool(nullable_override))
 
-    def __set__(self, instance: 'XmlElement', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
+    def __set__(self, instance: 'XmlElement | XmlPart', value: T | None, add_mode: AddMode = AddMode.SORT) -> None:
         if value is None:
             raise PowerpointIntegrityError(f"Cannot set a non-nullable RequiredXmlElementProperty to None in {instance.__class__.__name__}.")
 

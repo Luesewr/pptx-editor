@@ -76,3 +76,6 @@ class PartIdList(MutableSequence[T]):
         id_element = id_class(attributes=(id_attribute, relationship_attribute,))
         self.element.add_element(id_element, index=index)
         self.element.part.add_relationship(relationship)
+
+    def __repr__(self) -> str:
+        return f"PartIdList<{self.part_type.__name__}>{list(self)}"

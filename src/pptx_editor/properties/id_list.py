@@ -1,6 +1,7 @@
 from typing import TypeVar, TYPE_CHECKING, Generic
 
 from pptx_editor.part_id_list import PartIdList
+from pptx_editor.registries.part import PartRegistry
 
 if TYPE_CHECKING:
     from pptx_editor.xml_elements.id_list import AbstractIdList
@@ -8,8 +9,16 @@ if TYPE_CHECKING:
 T = TypeVar('T', bound='AbstractIdList')
 
 class PartIdListProperty(Generic[T]):
-    def __init__(self, part_type: type[T]):
-        self.part_type = part_type
+    def __init__(self, part_type: type[T] | str):
+        self._registry = PartRegistry()
+        self._part_type = part_type
+
+    @property
+    def part_type(self) -> type[T]:
+        if isinstance(self._part_type, str):
+            self._part_type = self._registry.get_part_cls_by_name(self._part_type)
+        return self._part_type
+
 
     def __get__(self, instance: 'AbstractIdList | None', owner: type['AbstractIdList']) -> 'PartIdList[T]':
         if instance is None:

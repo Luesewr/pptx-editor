@@ -2,7 +2,6 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from pptx_editor.content_type.presentationml import PresentationML
-from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.masters import SlideMaster
 from pptx_editor.parts.xml_part import XmlPart
 from pptx_editor.properties.part import RequiredRelatedPartProperty

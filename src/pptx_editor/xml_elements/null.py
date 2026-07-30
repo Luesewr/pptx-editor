@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Self, TypeVar, Generic, TypeGuard
+from typing import TypeVar, Generic
 
 from pptx_editor.modes.xml_element import AddMode
 from pptx_editor.writer import _OOXMLWriter

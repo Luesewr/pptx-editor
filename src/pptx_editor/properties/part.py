@@ -2,14 +2,22 @@ from typing import Generic, TypeVar
 
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.part import Part
+from pptx_editor.registries.part import PartRegistry
 
 T = TypeVar('T', bound='Part')
 
 class RelatedPartProperty(Generic[T]):
-    def __init__(self, part_type: type[T], target_type: str | None = None, nullable: bool = True):
-        self.part_type = part_type
+    def __init__(self, part_type: type[T] | str, target_type: str | None = None, nullable: bool = True):
+        self._registry = PartRegistry()
+        self._part_type = part_type
         self.target_type = target_type
         self.nullable = nullable
+
+    @property
+    def part_type(self) -> type[T]:
+        if isinstance(self._part_type, str):
+            self._part_type = self._registry.get_part_cls_by_name(self._part_type)
+        return self._part_type
 
     def get(self, instance: 'Part', *, nullable_override: bool | None = None) -> T | None:
         related_part = instance.get_related_part_by_type(self.part_type)
@@ -50,7 +58,7 @@ class RelatedPartProperty(Generic[T]):
         self.set(instance, value)
 
 class RequiredRelatedPartProperty(RelatedPartProperty[T]):
-    def __init__(self, part_type: type[T] = None, target_type: str | None = None):
+    def __init__(self, part_type: type[T] | str, target_type: str | None = None):
         super().__init__(part_type, target_type=target_type, nullable=False)
 
     def __get__(self, instance: 'Part | None', owner: type['Part'], nullable_override: bool | None = None) -> T:
