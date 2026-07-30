@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from pptx_editor.content_type.presentationml import PresentationML
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.xml_part import XmlPart
+from pptx_editor.part_id_list import PartIdList
 from pptx_editor.parts.theme import Theme
 from pptx_editor.properties.part import RequiredRelatedPartProperty
 from pptx_editor.properties.xml_element import RequiredXmlElementProperty
@@ -55,11 +56,11 @@ class SlideMaster(AbstractMaster):
     _slide_layout_id_list = RequiredXmlElementProperty['SlideLayoutIdList']('SlideLayoutIdList')
 
     @property
-    def slide_layouts(self) -> list['SlideLayout']:
+    def slide_layouts(self) -> PartIdList['SlideLayout']:
         """Get the list of SlideLayout parts associated with this SlideMaster."""
         return self._slide_layout_id_list.slide_layouts
 
     @slide_layouts.setter
-    def slide_layouts(self, value: list['SlideLayout']) -> None:
+    def slide_layouts(self, value: PartIdList['SlideLayout']) -> None:
         """Set the list of SlideLayout parts associated with this SlideMaster."""
         self._slide_layout_id_list.slide_layouts = value

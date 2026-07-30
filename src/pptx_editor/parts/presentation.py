@@ -4,6 +4,7 @@ from typing import IO
 from zipfile import ZipFile, ZIP_DEFLATED
 
 import pptx_editor.parser
+from pptx_editor.part_id_list import PartIdList
 import pptx_editor.writer
 
 from pptx_editor.content_type.presentationml import PresentationML
@@ -24,27 +25,27 @@ class Presentation(XmlPart):
     _slide_id_list = RequiredXmlElementProperty(SlideIdList)
 
     @property
-    def slides(self) -> list['Slide']:
+    def slides(self) -> PartIdList['Slide']:
         return self._slide_id_list.slides
 
     @slides.setter
-    def slides(self, value: list['Slide']) -> None:
+    def slides(self, value: PartIdList['Slide']) -> None:
         self._slide_id_list.slides = value
 
     @property
-    def slide_masters(self) -> list['SlideMaster']:
+    def slide_masters(self) -> PartIdList['SlideMaster']:
         return self._slide_master_id_list.slide_masters
 
     @slide_masters.setter
-    def slide_masters(self, value: list['SlideMaster']) -> None:
+    def slide_masters(self, value: PartIdList['SlideMaster']) -> None:
         self._slide_master_id_list.slide_masters = value
 
     @property
-    def notes_masters(self) -> list['NotesMaster']:
+    def notes_masters(self) -> PartIdList['NotesMaster']:
         return self._notes_master_id_list.notes_masters
 
     @notes_masters.setter
-    def notes_masters(self, value: list['NotesMaster']) -> None:
+    def notes_masters(self, value: PartIdList['NotesMaster']) -> None:
         self._notes_master_id_list.notes_masters = value
 
     @staticmethod

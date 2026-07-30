@@ -1,6 +1,6 @@
 import random
 
-from typing import TYPE_CHECKING, MutableSequence, TypeVar, overload
+from typing import TYPE_CHECKING, Generic, MutableSequence, TypeVar, overload
 
 from pptx_editor.attribute import Attribute
 from pptx_editor.attributes.relation_attribute import RelationshipAttribute
