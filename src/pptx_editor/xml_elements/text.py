@@ -13,10 +13,9 @@ from pptx_editor.xml_elements.font import LatinFont, ComplexScriptFont, EastAsia
 
 
 class TextBody(XmlElement):
-    default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
-    default_prefix = 'p'
     default_name = 'txBody'
     default_order = ('bodyPr', 'lstStyle', 'p',)
+    is_abstract = True
 
     @property
     def paragraphs(self) -> list['Paragraph']:
@@ -25,6 +24,18 @@ class TextBody(XmlElement):
     @property
     def paragraph_texts(self) -> str:
         return '\n\n'.join(paragraph.paragraph_text for paragraph in self.paragraphs)
+
+    def __init_subclass__(cls, **kwargs):
+        cls.is_abstract = False
+        super().__init_subclass__(**kwargs)
+
+class DrawingTextBody(TextBody):
+    default_namespace = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    default_prefix = 'a'
+
+class PresentationTextBody(TextBody):
+    default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+    default_prefix = 'p'
 
 
 class Paragraph(XmlElement):

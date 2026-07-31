@@ -1,5 +1,6 @@
-from pptx_editor.properties.xml_element import XmlElementProperty
+from pptx_editor.properties.xml_element import RequiredXmlElementProperty, XmlElementProperty
 from pptx_editor.xml_element import XmlElement
+from pptx_editor.xml_elements.graphic import Graphic
 from pptx_editor.xml_elements.text import TextBody
 
 class AbstractShape(XmlElement):
@@ -55,7 +56,17 @@ class GraphicFrame(AbstractShape):
     default_namespace = 'http://schemas.openxmlformats.org/presentationml/2006/main'
     default_prefix = 'p'
     default_name = 'graphicFrame'
-    default_order = ('nvGraphicFramePr', 'xfrm', 'graphic',)
+    default_order = ('nvGraphicFramePr', 'xfrm', 'graphic', 'extLst',)
+
+    graphic = RequiredXmlElementProperty(Graphic)
+
+    @property
+    def table(self):
+        return self.graphic.graphic_data.table
+
+    @table.setter
+    def table(self, value):
+        self.graphic.graphic_data.table = value
 
 
 class ConnectionShape(AbstractShape):
