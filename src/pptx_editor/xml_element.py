@@ -55,7 +55,7 @@ class XmlElement:
         return [element for element in self.children if isinstance(element, element_type)]
 
     def add_element(self, element: 'XmlElement', index: int | None = None) -> None:
-        if element.parent is not None and element.parent is not self:
+        if element.parent is not None:
             element = element.copy()
 
         element.parent = self
@@ -77,7 +77,7 @@ class XmlElement:
     def replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement') -> None:
         index = self.index_of_element(old_element)
 
-        if new_element.parent is not None and new_element.parent is not self:
+        if new_element.parent is not None:
             new_element = new_element.copy()
 
         new_element.parent = self
@@ -141,7 +141,7 @@ class XmlElement:
     def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
 
-        if new_element.parent is not None and new_element.parent is not self:
+        if new_element.parent is not None:
             new_element = new_element.copy()
 
         new_element.parent = self
@@ -151,7 +151,7 @@ class XmlElement:
     def insert_element_after(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
 
-        if new_element.parent is not None and new_element.parent is not self:
+        if new_element.parent is not None:
             new_element = new_element.copy()
 
         new_element.parent = self

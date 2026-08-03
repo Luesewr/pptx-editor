@@ -51,9 +51,20 @@ class TableRowList(MutableSequence['TableRow']):
         else:
             raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
-    def __delitem__(self, index: int) -> None:
+    @overload
+    def __delitem__(self, index: int) -> None: ...
+
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
+
+    def __delitem__(self, index: int | slice) -> None:
         row = self[index]
-        self.table.remove_element(row)
+
+        if isinstance(index, int):
+            row = [row]
+
+        for r in row:
+            self.table.remove_element(r)
 
     def insert(self, index: int, value: 'TableRow | GridColumn | list[TableCell]') -> None:
         if isinstance(value, list) or value.is_column():
@@ -61,7 +72,7 @@ class TableRowList(MutableSequence['TableRow']):
             row.height = 0
             row.cells.extend(value if isinstance(value, list) else [cell.copy() for cell in value.cells])
         else:
-            row = value.copy()
+            row = value
 
         reference_row = self[index] if index < len(self) else None
 
@@ -108,16 +119,16 @@ class TableColumnList(MutableSequence['GridColumn']):
             if isinstance(value, list) or value.is_row():
                 column = self.column_cls()
                 column.width = 0
-                cells = value if isinstance(value, list) else [cell.copy() for cell in value.cells]
+                cells = value if isinstance(value, list) else list(value.cells)
             else:
                 column = value
-                cells = value.cells
+                cells = list(value.cells)
 
             self.table.table_grid.replace_element(self[index], column)
 
             for row, cell in zip(self.table.rows, cells):
-                cell_copy = cell.copy()
-                row.cells[index] = cell_copy
+                row.cells[index] = cell
+
         elif isinstance(index, slice):
             if not isinstance(value, list):
                 raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
@@ -142,7 +153,7 @@ class TableColumnList(MutableSequence['GridColumn']):
             column = value
 
         if not isinstance(value, list):
-            cells = value.cells
+            cells = list(value.cells)
         else:
             cells = value
 
