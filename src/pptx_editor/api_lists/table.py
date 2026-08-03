@@ -58,13 +58,15 @@ class TableRowList(MutableSequence['TableRow']):
     def __delitem__(self, index: slice) -> None: ...
 
     def __delitem__(self, index: int | slice) -> None:
-        row = self[index]
-
         if isinstance(index, int):
-            row = [row]
+            rows = [self[index]]
+        elif isinstance(index, slice):
+            rows = [self[i] for i in range(*index.indices(len(self)))]
+        else:
+            raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
-        for r in row:
-            self.table.remove_element(r)
+        for row in rows:
+            self.table.remove_element(row)
 
     def insert(self, index: int, value: 'TableRow | GridColumn | list[TableCell]') -> None:
         if isinstance(value, list) or value.is_column():
@@ -137,13 +139,24 @@ class TableColumnList(MutableSequence['GridColumn']):
         else:
             raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
-    def __delitem__(self, index: int) -> None:
-        column = self[index]
+    @overload
+    def __delitem__(self, index: int) -> None: ...
 
-        for row in self.table.rows:
-            del row.cells[index]
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
 
-        self.table.table_grid.remove_element(column)
+    def __delitem__(self, index: int | slice) -> None:
+        if isinstance(index, int):
+            columns = [self[index]]
+        elif isinstance(index, slice):
+            columns = [self[i] for i in range(*index.indices(len(self)))]
+        else:
+            raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
+
+        for column in columns:
+            for row in self.table.rows:
+                del row.cells[self.table.table_grid.grid_columns.index(column)]
+            self.table.table_grid.remove_element(column)
 
     def insert(self, index: int, value: 'GridColumn | TableRow | list[TableCell]') -> None:
         if isinstance(value, list) or value.is_row():
@@ -211,9 +224,22 @@ class TableRowCellList(MutableSequence['TableCell']):
         else:
             raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
-    def __delitem__(self, index: int) -> None:
-        cell = self[index]
-        self.row.remove_element(cell)
+    @overload
+    def __delitem__(self, index: int) -> None: ...
+
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
+
+    def __delitem__(self, index: int | slice) -> None:
+        if isinstance(index, int):
+            cells = [self[index]]
+        elif isinstance(index, slice):
+            cells = [self[i] for i in range(*index.indices(len(self)))]
+        else:
+            raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
+
+        for cell in cells:
+            self.row.remove_element(cell)
 
     def insert(self, index: int, value: 'TableCell') -> None:
         reference_cell = self[index] if index < len(self) else None
@@ -269,9 +295,23 @@ class TableColumnCellList(MutableSequence['TableCell']):
         else:
             raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
-    def __delitem__(self, index: int) -> None:
-        column_index = self.column.table.table_grid.grid_columns.index(self.column)
-        del self.column.table.rows[index].cells[column_index]
+    @overload
+    def __delitem__(self, index: int) -> None: ...
+
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
+
+    def __delitem__(self, index: int | slice) -> None:
+        if isinstance(index, int):
+            cells = [self[index]]
+        elif isinstance(index, slice):
+            cells = [self[i] for i in range(*index.indices(len(self)))]
+        else:
+            raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
+
+        for cell in cells:
+            column_index = self.column.table.table_grid.grid_columns.index(self.column)
+            self.column.table.rows[self.column.table.rows.index(cell.parent)].cells.pop(column_index)
 
     def insert(self, index: int, value: 'TableCell') -> None:
         column_index = self.column.table.table_grid.grid_columns.index(self.column)
