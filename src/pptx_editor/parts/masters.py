@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from pptx_editor.content_type.presentationml import PresentationML
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.parts.xml_part import XmlPart
-from pptx_editor.part_id_list import PartIdList
+from pptx_editor.api_lists.part_id_list import PartIdList
 from pptx_editor.parts.theme import Theme
 from pptx_editor.properties.part import RequiredRelatedPartProperty
 from pptx_editor.properties.xml_element import RequiredXmlElementProperty

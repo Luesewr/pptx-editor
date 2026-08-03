@@ -4,7 +4,7 @@ from typing import IO
 from zipfile import ZipFile, ZIP_DEFLATED
 
 import pptx_editor.parser
-from pptx_editor.part_id_list import PartIdList
+from pptx_editor.api_lists.part_id_list import PartIdList
 import pptx_editor.writer
 
 from pptx_editor.content_type.presentationml import PresentationML

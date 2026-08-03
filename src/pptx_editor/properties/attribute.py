@@ -99,6 +99,19 @@ class IntegerAttributeProperty(AttributeProperty[T]):
             attribute_instance = self.attribute_type(str(int(value * self.scalar)))
             instance.add_attribute(attribute_instance)
 
+class RequiredIntegerAttributeProperty(IntegerAttributeProperty[T]):
+    def __init__(self, attribute_type: type[T], scalar: int | float = 1):
+        super().__init__(attribute_type, nullable=False, scalar=scalar)
+
+    def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> int:
+        return super().__get__(instance, owner, nullable_override=bool(nullable_override))
+
+    def __set__(self, instance: 'XmlElement', value: int | None) -> None:
+        if value is None:
+            raise PowerpointIntegrityError(f"Cannot set a non-nullable RequiredIntegerAttributeProperty to None in {instance.__class__.__name__}.")
+
+        super().__set__(instance, value)
+
 class BooleanAttributeProperty(AttributeProperty[T]):
     def __get__(self, instance: 'XmlElement | None', owner: type['XmlElement'], nullable_override: bool | None = None) -> bool | None:
         attribute = super().__get__(instance, owner, nullable_override)

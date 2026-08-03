@@ -21,7 +21,7 @@ class XmlElement:
     default_name: str | None = None
     default_order: tuple[str | tuple[str, ...], ...] | None = None
 
-    __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'part', 'namespaces']
+    __slots__ = ['name', 'prefix', 'attributes', 'children', 'text', 'tail', 'part', 'namespaces', 'parent']
 
     def __init__(self, name: str | None = None, prefix: str | None = None, attributes: tuple['Attribute', ...] = (), children: tuple['XmlElement', ...] = (), text: str | None = None, tail: str | None = None, part: 'XmlPart | None' = None, namespaces: dict[str | None, str] | None = None):
         self.name = name if name else self.default_name
@@ -32,6 +32,7 @@ class XmlElement:
         self.tail = tail
         self.part = part
         self.namespaces = namespaces
+        self.parent: 'XmlElement | None' = None
 
     def get_element(self, name: str, prefix: str | None = None) -> 'XmlElement | None':
         for element in self.children:
@@ -54,6 +55,11 @@ class XmlElement:
         return [element for element in self.children if isinstance(element, element_type)]
 
     def add_element(self, element: 'XmlElement', index: int | None = None) -> None:
+        if element.parent is not None and element.parent is not self:
+            element = element.copy()
+
+        element.parent = self
+
         if index is None:
             self.children = (*self.children, element)
         else:
@@ -71,12 +77,15 @@ class XmlElement:
     def replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement') -> None:
         index = self.index_of_element(old_element)
 
+        if new_element.parent is not None and new_element.parent is not self:
+            new_element = new_element.copy()
+
+        new_element.parent = self
+
         self.children = (*self.children[:index], new_element, *self.children[index + 1:])
 
     def auto_replace_element(self, old_element: 'XmlElement', new_element: 'XmlElement', add_mode: AddMode = AddMode.SORT) -> None:
-        index = self.index_of_element(old_element)
-
-        self.children = (*self.children[:index], new_element, *self.children[index + 1:])
+        self.replace_element(old_element, new_element)
 
         if add_mode == AddMode.SORT:
             self.sort_children()
@@ -122,16 +131,30 @@ class XmlElement:
     def copy(self, part: 'XmlPart | None' = None, relationship_map: dict | None = None):
         copied_attributes = tuple(value.copy(part=part, relationship_map=relationship_map) for value in self.attributes)
         copied_children = tuple(child.copy(part=part, relationship_map=relationship_map) for child in self.children)
+        element_copy = self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, part if part is not None else self.part, self.namespaces.copy() if self.namespaces is not None else None)
 
-        return self.__class__(self.name, self.prefix, copied_attributes, copied_children, self.text, self.tail, part if part is not None else self.part, self.namespaces.copy() if self.namespaces is not None else None)
+        for child in element_copy.children:
+            child.parent = element_copy
+
+        return element_copy
 
     def insert_element_before(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
+
+        if new_element.parent is not None and new_element.parent is not self:
+            new_element = new_element.copy()
+
+        new_element.parent = self
 
         self.children = (*self.children[:index], new_element, *self.children[index:])
 
     def insert_element_after(self, new_element: 'XmlElement', reference_element: 'XmlElement') -> None:
         index = self.index_of_element(reference_element)
+
+        if new_element.parent is not None and new_element.parent is not self:
+            new_element = new_element.copy()
+
+        new_element.parent = self
 
         self.children = (*self.children[:index + 1], new_element, *self.children[index + 1:])
 
@@ -280,7 +303,7 @@ class XmlElement:
         )
 
     def __str__(self):
-        return f"{self.__class__.__name__}(name={escape(self.name)}, namespace={escape(self.prefix) if self.prefix else None}, attributes={[str(value) for value in self.attributes]})"
+        return f"{self.__class__.__name__}({escape(self.prefix) + ':' if self.prefix else ''}{escape(self.name)}, text={escape(self.text) if self.text else None}, attributes={[str(value) for value in self.attributes]})"
 
     def __repr__(self):
         return self.__str__()

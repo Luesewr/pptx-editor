@@ -1,6 +1,6 @@
 from typing import TypeVar, TYPE_CHECKING, Generic
 
-from pptx_editor.part_id_list import PartIdList
+from pptx_editor.api_lists.part_id_list import PartIdList
 from pptx_editor.registries.part import PartRegistry
 
 if TYPE_CHECKING:

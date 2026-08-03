@@ -98,6 +98,9 @@ class _OOXMLParser:
 
                 parsed_element = _OOXMLParser.parse_element_from_xml(part, element, parsed_attributes, children, declared_namespaces)
 
+                for child in children:
+                    child.parent = parsed_element
+
                 if len(path_stack) > 0:
                     child_stack[-1].append(parsed_element)
                 else:
