@@ -28,18 +28,21 @@ class TableRowList(MutableSequence['TableRow']):
         raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
     @overload
-    def __setitem__(self, index: int, value: 'TableRow | list[TableCell]') -> None: ...
+    def __setitem__(self, index: int, value: 'TableRow | GridColumn | list[TableCell]') -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: 'list[TableRow | list[TableCell]]') -> None: ...
+    def __setitem__(self, index: slice, value: 'list[TableRow | GridColumn | list[TableCell]]') -> None: ...
 
-    def __setitem__(self, index: int | slice, value: 'TableRow | list[TableCell] | list[TableRow | list[TableCell]]') -> None:
+    def __setitem__(self, index: int | slice, value: 'TableRow | GridColumn | list[TableCell] | list[TableRow | GridColumn | list[TableCell]]') -> None:
         if isinstance(index, int):
-            if not isinstance(value, list):
-                row_copy = value.copy()
-                self.table.replace_element(self[index], row_copy)
+            if isinstance(value, list) or value.is_column():
+                row = self.row_cls()
+                row.height = 0
+                row.cells.extend(value if isinstance(value, list) else [cell.copy() for cell in value.cells])
             else:
-                self[index].cells = value
+                row = value
+
+            self.table.replace_element(self[index], row)
         elif isinstance(index, slice):
             if not isinstance(value, list):
                 raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
@@ -95,18 +98,22 @@ class TableColumnList(MutableSequence['GridColumn']):
         raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
     @overload
-    def __setitem__(self, index: int, value: 'GridColumn | list[TableCell]') -> None: ...
+    def __setitem__(self, index: int, value: 'GridColumn | TableRow | list[TableCell]') -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: 'list[GridColumn | list[TableCell]]') -> None: ...
+    def __setitem__(self, index: slice, value: 'list[GridColumn | TableRow | list[TableCell]]') -> None: ...
 
-    def __setitem__(self, index: int | slice, value: 'GridColumn | list[TableCell] | list[GridColumn | list[TableCell]]') -> None:
+    def __setitem__(self, index: int | slice, value: 'GridColumn | TableRow | list[TableCell] | list[GridColumn | TableRow | list[TableCell]]') -> None:
         if isinstance(index, int):
-            if not isinstance(value, list):
-                cells = value.cells
-                self.table.table_grid.replace_element(self[index], value)
+            if isinstance(value, list) or value.is_row():
+                column = self.column_cls()
+                column.width = 0
+                cells = value if isinstance(value, list) else [cell.copy() for cell in value.cells]
             else:
-                cells = value
+                column = value
+                cells = value.cells
+
+            self.table.table_grid.replace_element(self[index], column)
 
             for row, cell in zip(self.table.rows, cells):
                 cell_copy = cell.copy()
