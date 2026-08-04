@@ -40,7 +40,7 @@ class TableRowList(MutableSequence['TableRow']):
                 row.height = 0
                 row.cells.extend(value if isinstance(value, list) else [cell.copy() for cell in value.cells])
             else:
-                row = value
+                row = value if value.table is self.table else value.copy()
 
             self.table.replace_element(self[index], row)
         elif isinstance(index, slice):
@@ -74,9 +74,9 @@ class TableRowList(MutableSequence['TableRow']):
             row.height = 0
             row.cells.extend(value if isinstance(value, list) else [cell.copy() for cell in value.cells])
         else:
-            row = value
+            row = value if value.table is self.table else value.copy()
 
-        reference_row = self[index] if index < len(self) else None
+        reference_row = self[index - 1] if index - 1 >= 0 and index - 1 < len(self) else None
 
         if reference_row is not None:
             self.table.insert_element_after(row, reference_row)
@@ -123,7 +123,7 @@ class TableColumnList(MutableSequence['GridColumn']):
                 column.width = 0
                 cells = value if isinstance(value, list) else list(value.cells)
             else:
-                column = value
+                column = value if value.table is self.table else value.copy()
                 cells = list(value.cells)
 
             self.table.table_grid.replace_element(self[index], column)
@@ -163,7 +163,7 @@ class TableColumnList(MutableSequence['GridColumn']):
             column = self.column_cls()
             column.width = 0
         else:
-            column = value
+            column = value if value.table is self.table else value.copy()
 
         if not isinstance(value, list):
             cells = list(value.cells)
@@ -173,7 +173,7 @@ class TableColumnList(MutableSequence['GridColumn']):
         for row, cell in zip(self.table.rows, cells):
             row.cells.insert(index, cell)
 
-        reference_column = self[index] if index < len(self) else None
+        reference_column = self[index - 1] if index - 1 >= 0 and index - 1 < len(self) else None
 
         if reference_column is not None:
             self.table.table_grid.insert_element_after(column, reference_column)
@@ -242,7 +242,7 @@ class TableRowCellList(MutableSequence['TableCell']):
             self.row.remove_element(cell)
 
     def insert(self, index: int, value: 'TableCell') -> None:
-        reference_cell = self[index] if index < len(self) else None
+        reference_cell = self[index - 1] if index - 1 >= 0 and index - 1 < len(self) else None
 
         if reference_cell is not None:
             self.row.insert_element_after(value, reference_cell)
@@ -269,7 +269,7 @@ class TableColumnCellList(MutableSequence['TableCell']):
 
     def __getitem__(self, index: int | slice) -> 'TableCell | list[TableCell]':
         if isinstance(index, int):
-            column_index = self.column.table.table_grid.grid_columns.index(self.column)
+            column_index = self.column.table.columns.index(self.column)
             return self.column.table.rows[index].cells[column_index]
 
         if isinstance(index, slice):
@@ -285,7 +285,7 @@ class TableColumnCellList(MutableSequence['TableCell']):
 
     def __setitem__(self, index: int | slice, value: 'TableCell | list[TableCell]') -> None:
         if isinstance(index, int):
-            column_index = self.column.table.table_grid.grid_columns.index(self.column)
+            column_index = self.column.table.columns.index(self.column)
             self.column.table.rows[index].cells[column_index] = value
         elif isinstance(index, slice):
             if not isinstance(value, list):
@@ -310,11 +310,11 @@ class TableColumnCellList(MutableSequence['TableCell']):
             raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
         for cell in cells:
-            column_index = self.column.table.table_grid.grid_columns.index(self.column)
+            column_index = self.column.table.columns.index(self.column)
             self.column.table.rows[self.column.table.rows.index(cell.parent)].cells.pop(column_index)
 
     def insert(self, index: int, value: 'TableCell') -> None:
-        column_index = self.column.table.table_grid.grid_columns.index(self.column)
+        column_index = self.column.table.columns.index(self.column)
         self.column.table.rows[index].cells.insert(column_index, value)
 
     def __repr__(self) -> str:

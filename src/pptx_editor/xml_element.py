@@ -276,31 +276,7 @@ class XmlElement:
         return hash((self.name, self.prefix, self.attributes, self.children, self.text, self.tail, self.part, frozenset(self.namespaces.items()) if self.namespaces else None))
 
     def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-
-        if self is other:
-            return True
-
-        return (
-            self.name,
-            self.prefix,
-            self.attributes,
-            self.children,
-            self.text,
-            self.tail,
-            self.part,
-            self.namespaces
-        ) == (
-            other.name,
-            other.prefix,
-            other.attributes,
-            other.children,
-            other.text,
-            other.tail,
-            other.part,
-            other.namespaces
-        )
+        return self is other
 
     def __str__(self):
         return f"{self.__class__.__name__}({escape(self.prefix) + ':' if self.prefix else ''}{escape(self.name)}, text={escape(self.text) if self.text else None}, attributes={[str(value) for value in self.attributes]})"
