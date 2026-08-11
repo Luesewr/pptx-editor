@@ -32,12 +32,12 @@ class TableRowList(MutableSequence['TableRow']):
         raise TypeError(f"Invalid index type: {type(index).__name__}. Expected int or slice.")
 
     @overload
-    def __setitem__(self, index: int, value: 'TableSubcollection | Sequence[TableCell]') -> None: ...
+    def __setitem__(self, index: int, value: 'TableSubcollection | Sequence[TableCell] | Sequence[TableSubcollection | Sequence[TableCell]]') -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: 'list[TableSubcollection | Sequence[TableCell]]') -> None: ...
+    def __setitem__(self, index: slice, value: 'Sequence[TableSubcollection | Sequence[TableCell]]') -> None: ...
 
-    def __setitem__(self, index: int | slice, value: 'TableSubcollection | Sequence[TableCell] | list[TableSubcollection | Sequence[TableCell]]') -> None:
+    def __setitem__(self, index: int | slice, value: 'TableSubcollection | Sequence[TableCell] | Sequence[TableSubcollection | Sequence[TableCell]]') -> None:
         if isinstance(index, int):
             if isinstance(value, XmlElement) and value.is_row():
                 row = value.copy() if value.table is self.table else value
@@ -48,8 +48,8 @@ class TableRowList(MutableSequence['TableRow']):
 
             self.table.replace_element(self[index], row)
         elif isinstance(index, slice):
-            if not isinstance(value, list):
-                raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
+            if not isinstance(value, Sequence):
+                raise TypeError(f"Expected a sequence for slice assignment, got {type(value).__name__}.")
             for i, v in zip(range(*index.indices(len(self))), value):
                 self[i] = v
         else:
@@ -118,9 +118,9 @@ class TableColumnList(MutableSequence['GridColumn']):
     def __setitem__(self, index: int, value: 'TableSubcollection | Sequence[TableCell]') -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: 'list[TableSubcollection | Sequence[TableCell]]') -> None: ...
+    def __setitem__(self, index: slice, value: 'Sequence[TableSubcollection | Sequence[TableCell]]') -> None: ...
 
-    def __setitem__(self, index: int | slice, value: 'TableSubcollection | Sequence[TableCell] | list[TableSubcollection | Sequence[TableCell]]') -> None:
+    def __setitem__(self, index: int | slice, value: 'TableSubcollection | Sequence[TableCell] | Sequence[TableSubcollection | Sequence[TableCell]]') -> None:
         if isinstance(index, int):
             if isinstance(value, XmlElement) and value.is_column():
                 column = value.copy() if value.table is self.table else value
@@ -136,7 +136,7 @@ class TableColumnList(MutableSequence['GridColumn']):
                 row.cells[index] = cell
 
         elif isinstance(index, slice):
-            if not isinstance(value, list):
+            if not isinstance(value, Sequence):
                 raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
             for i, v in zip(range(*index.indices(len(self))), value):
                 self[i] = v
@@ -228,8 +228,8 @@ class TableRowCellList(TableSubcollectionCellList):
         if isinstance(index, int):
             self.row.replace_element(self[index], value)
         elif isinstance(index, slice):
-            if not isinstance(value, list):
-                raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
+            if not isinstance(value, Sequence):
+                raise TypeError(f"Expected a sequence for slice assignment, got {type(value).__name__}.")
             for i, v in zip(range(*index.indices(len(self))), value):
                 self[i] = v
         else:
@@ -298,7 +298,7 @@ class TableColumnCellList(TableSubcollectionCellList):
     def __setitem__(self, index: int, value: 'TableCell') -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: list['TableCell']) -> None: ...
+    def __setitem__(self, index: slice, value: Sequence['TableCell']) -> None: ...
 
     def __setitem__(self, index: int | slice, value: 'TableCell | Sequence[TableCell]') -> None:
         if isinstance(index, int):
@@ -308,8 +308,8 @@ class TableColumnCellList(TableSubcollectionCellList):
             column_index = self.column.table.columns.index(self.column)
             self.column.table.rows[index].cells[column_index] = value
         elif isinstance(index, slice):
-            if not isinstance(value, list):
-                raise TypeError(f"Expected a list for slice assignment, got {type(value).__name__}.")
+            if not isinstance(value, Sequence):
+                raise TypeError(f"Expected a sequence for slice assignment, got {type(value).__name__}.")
             for i, v in zip(range(*index.indices(len(self))), value):
                 self[i] = v
         else:
