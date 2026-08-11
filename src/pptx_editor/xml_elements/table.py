@@ -3,7 +3,7 @@ from abc import abstractmethod
 from pptx_editor.attributes.table import Height, Width
 from pptx_editor.properties.xml_element import RequiredXmlElementProperty, XmlElementProperty
 from pptx_editor.properties.attribute import RequiredIntegerAttributeProperty
-from pptx_editor.properties.table import TableColumnCellProperty, TableRowProperty, TableColumnProperty, TableRowCellProperty
+from pptx_editor.properties.table import TableColumnCellProperty, TableRowProperty, TableColumnProperty, TableRowCellProperty, TableSubcollectionProperty
 from pptx_editor.xml_element import XmlElement
 from pptx_editor.exceptions import PowerpointIntegrityError
 from pptx_editor.xml_elements.text import TextBody
@@ -27,6 +27,17 @@ class TableSubcollection(XmlElement):
     default_name = None
     is_abstract = True
 
+    cells: TableSubcollectionProperty
+
+    @property
+    def table(self) -> 'Table | None':
+        parent = self.parent
+        while parent is not None:
+            if isinstance(parent, Table):
+                return parent
+            parent = parent.parent
+        return None
+
     @abstractmethod
     def is_row(self) -> bool:
         """Determine if this subcollection represents rows or columns."""
@@ -45,17 +56,8 @@ class TableRow(TableSubcollection):
     default_name = 'tr'
     default_order = ('tc', 'extLst',)
 
-    cells = TableRowCellProperty(TableCell)
+    cells: TableRowCellProperty = TableRowCellProperty(TableCell)
     height = RequiredIntegerAttributeProperty(Height)
-
-    @property
-    def table(self) -> 'Table':
-        parent = self.parent
-        while parent is not None:
-            if isinstance(parent, Table):
-                return parent
-            parent = parent.parent
-        raise PowerpointIntegrityError("TableRow is not part of a Table.")
 
     def is_row(self) -> bool:
         return True
@@ -70,17 +72,8 @@ class GridColumn(TableSubcollection):
     default_name = 'gridCol'
     default_order = ('extLst',)
 
-    cells = TableColumnCellProperty(TableCell)
+    cells: TableColumnCellProperty = TableColumnCellProperty(TableCell)
     width = RequiredIntegerAttributeProperty(Width)
-
-    @property
-    def table(self) -> 'Table':
-        parent = self.parent
-        while parent is not None:
-            if isinstance(parent, Table):
-                return parent
-            parent = parent.parent
-        raise PowerpointIntegrityError("GridColumn is not part of a Table.")
 
     def is_row(self) -> bool:
         return False
