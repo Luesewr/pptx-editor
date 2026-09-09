@@ -1,5 +1,6 @@
 from io import BytesIO
-from typing import TYPE_CHECKING, TypeVar, TypeIs
+from typing import TYPE_CHECKING, TypeVar
+from typing_extensions import TypeIs
 from xml.sax.saxutils import escape
 
 from pptx_editor import xml_elements
