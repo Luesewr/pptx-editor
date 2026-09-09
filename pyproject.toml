@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pptx-editor"
+name = "pptx-edit"
 version = "0.1.0"
 description = "A Python library for editing PowerPoint (.pptx) files"
 readme = "README.md"

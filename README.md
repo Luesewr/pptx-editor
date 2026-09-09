@@ -5,7 +5,7 @@ A Python library for editing PowerPoint (.pptx) files.
 ## Installation
 
 ```bash
-pip install pptx-editor
+pip install pptx-edit
 ```
 
 For development:
